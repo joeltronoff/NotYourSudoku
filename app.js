@@ -32,6 +32,7 @@
     difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
+    closeSettings();
     startTimer();
     saveState();
     render();
@@ -89,7 +90,7 @@
       };
       difficultyDisplay.textContent = state.difficulty[0].toUpperCase() + state.difficulty.slice(1);
       timerDisplay.textContent = formatTime(state.seconds);
-      mistakesDisplay.textContent = state.mistakes;
+      mistakesDisplay.textContent = `${state.mistakes} ✕`;
       if (!state.won) startTimer();
       return true;
     } catch (e) {
@@ -152,7 +153,7 @@
       }
     }
     renderNumpad();
-    mistakesDisplay.textContent = state.mistakes;
+    mistakesDisplay.textContent = `${state.mistakes} ✕`;
   }
 
   function renderNumpad() {
@@ -257,12 +258,25 @@
     const hint = getHint(state.grid, level);
     state.hintCell = hint.cell || null;
     let html = `<span class="hint-technique">${hint.technique}</span>${hint.explanation}`;
+    if (level === "nudge" && hint.cell) {
+      html += ` <button class="hint-reveal-link" id="hintRevealLink">Show the full move</button>`;
+    }
     hintOutput.innerHTML = html;
     hintOutput.classList.add("show");
     render();
+    const revealLink = document.getElementById("hintRevealLink");
+    if (revealLink) revealLink.addEventListener("click", () => showHint("reveal"));
   }
 
   // ---------------- Wiring ----------------
+  const settingsBackdrop = document.getElementById("settingsBackdrop");
+  function openSettings() { settingsBackdrop.classList.add("show"); }
+  function closeSettings() { settingsBackdrop.classList.remove("show"); }
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  settingsBackdrop.addEventListener("click", (e) => {
+    if (e.target === settingsBackdrop) closeSettings();
+  });
+
   document.getElementById("newPuzzleBtn").addEventListener("click", () => {
     const active = document.querySelector(".chip.active");
     newGame(active ? active.dataset.diff : "medium");
@@ -284,15 +298,12 @@
   document.getElementById("eraseBtn").addEventListener("click", eraseCell);
 
   const notesBtn = document.getElementById("notesBtn");
-  const notesState = document.getElementById("notesState");
   notesBtn.addEventListener("click", () => {
     state.notesMode = !state.notesMode;
     notesBtn.classList.toggle("on", state.notesMode);
-    notesState.textContent = state.notesMode ? "On" : "Off";
   });
 
-  document.getElementById("nudgeBtn").addEventListener("click", () => showHint("nudge"));
-  document.getElementById("revealBtn").addEventListener("click", () => showHint("reveal"));
+  document.getElementById("hintBtn").addEventListener("click", () => showHint("nudge"));
 
   document.getElementById("checkBtn").addEventListener("click", () => {
     render();

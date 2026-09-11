@@ -17,84 +17,66 @@
 
 <div class="app" id="app">
 
-  <!-- Header -->
+  <!-- Header: minimal, just status -->
   <header class="titlebar">
-    <div class="brand">
-      <span class="brand-mark">§</span>
-      <h1>Solver's Notebook</h1>
-    </div>
-    <div class="header-actions">
-      <button class="icon-btn" id="menuBtn" aria-label="Menu">
-        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-      </button>
-    </div>
+    <span class="difficulty-tag" id="difficultyDisplay">Medium</span>
+    <span class="timer" id="timerDisplay">00:00</span>
+    <span class="mistakes" id="mistakesDisplay" title="Mistakes">0 ✕</span>
   </header>
 
   <main class="layout">
 
-    <!-- Puzzle column -->
+    <!-- Puzzle column: board takes majority of space -->
     <section class="puzzle-col">
-      <div class="status-strip">
-        <div class="stat">
-          <span class="stat-label">Time</span>
-          <span class="stat-value" id="timerDisplay">00:00</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Mistakes</span>
-          <span class="stat-value" id="mistakesDisplay">0</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Difficulty</span>
-          <span class="stat-value" id="difficultyDisplay">Medium</span>
-        </div>
-      </div>
-
       <div class="board-wrap">
         <div class="board" id="board" role="grid" aria-label="Sudoku board"></div>
       </div>
-
-      <div class="mobile-numpad" id="mobileNumpad"></div>
     </section>
 
-    <!-- Control panel -->
+    <!-- Control rail: icon-only tools + numpad -->
     <aside class="panel">
-      <div class="panel-block">
-        <h2>New puzzle</h2>
-        <div class="difficulty-grid" id="difficultyGrid">
-          <button class="chip" data-diff="easy">Easy</button>
-          <button class="chip" data-diff="medium">Medium</button>
-          <button class="chip" data-diff="hard">Hard</button>
-          <button class="chip" data-diff="expert">Expert</button>
-        </div>
-        <button class="btn primary" id="newPuzzleBtn">Start new puzzle</button>
-      </div>
 
-      <div class="panel-block">
-        <h2>Tools</h2>
-        <div class="tool-row">
-          <button class="btn" id="undoBtn">Undo</button>
-          <button class="btn" id="eraseBtn">Erase</button>
-        </div>
-        <button class="btn toggle" id="notesBtn">
-          <span>Pencil marks</span>
-          <span class="toggle-state" id="notesState">Off</span>
+      <div class="icon-row" id="iconRow">
+        <button class="icon-tool" id="settingsBtn" title="New puzzle / difficulty" aria-label="New puzzle and difficulty">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button class="icon-tool" id="undoBtn" title="Undo" aria-label="Undo">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+        </button>
+        <button class="icon-tool" id="eraseBtn" title="Erase" aria-label="Erase cell">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 19"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+        </button>
+        <button class="icon-tool" id="notesBtn" title="Pencil marks" aria-label="Toggle pencil marks">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+        <button class="icon-tool" id="hintBtn" title="Hint" aria-label="Get a hint">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.5 1 1.3 1 2.1V16h6v-.4c0-.8.4-1.6 1-2.1A6 6 0 0 0 12 3Z"/></svg>
+        </button>
+        <button class="icon-tool" id="checkBtn" title="Check board" aria-label="Check board for conflicts">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         </button>
       </div>
 
-      <div class="panel-block hint-block">
-        <h2>Stuck?</h2>
-        <p class="hint-copy">Get a logic-based hint — the same kind of deduction Simon reaches for on the show.</p>
-        <button class="btn" id="nudgeBtn">Give me a nudge</button>
-        <button class="btn accent" id="revealBtn">Reveal the move</button>
-        <div class="hint-output" id="hintOutput"></div>
-      </div>
+      <div class="hint-output" id="hintOutput"></div>
 
-      <div class="panel-block">
-        <button class="btn ghost" id="checkBtn">Check board</button>
-      </div>
+      <div class="mobile-numpad" id="mobileNumpad"></div>
+
     </aside>
 
   </main>
+
+  <!-- Settings popover: difficulty + new puzzle -->
+  <div class="popover-backdrop" id="settingsBackdrop">
+    <div class="popover" id="settingsPopover">
+      <div class="difficulty-grid" id="difficultyGrid">
+        <button class="chip" data-diff="easy">Easy</button>
+        <button class="chip" data-diff="medium">Medium</button>
+        <button class="chip" data-diff="hard">Hard</button>
+        <button class="chip" data-diff="expert">Expert</button>
+      </div>
+      <button class="btn primary" id="newPuzzleBtn">Start new puzzle</button>
+    </div>
+  </div>
 
   <!-- Win overlay -->
   <div class="overlay" id="winOverlay">
