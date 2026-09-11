@@ -170,7 +170,7 @@ button {
   transform: translateY(4.4%);
   color: var(--given);
 }
-.cell.user .value { color: var(--user-entry); font-weight: 600; }
+.cell.user .value { color: var(--user-entry); }
 .cell.given .value { color: var(--ink); }
 .cell.conflict .value { color: var(--error); }
 .cell.conflict { background: var(--error-soft); }
