@@ -29,7 +29,13 @@
     <!-- Puzzle column: board takes majority of space -->
     <section class="puzzle-col">
       <div class="board-wrap">
-        <div class="board" id="board" role="grid" aria-label="Sudoku board"></div>
+        <div class="board" id="board" role="grid" aria-label="Sudoku board">
+          <div class="board-grid" id="boardGrid"></div>
+          <div class="box-line box-line-v" style="left:33.3333%"></div>
+          <div class="box-line box-line-v" style="left:66.6667%"></div>
+          <div class="box-line box-line-h" style="top:33.3333%"></div>
+          <div class="box-line box-line-h" style="top:66.6667%"></div>
+        </div>
       </div>
     </section>
 

@@ -5,7 +5,7 @@
   let state = null; // full game state, see newGame()
   let timerInterval = null;
 
-  const boardEl = document.getElementById("board");
+  const boardEl = document.getElementById("boardGrid");
   const numpadEl = document.getElementById("mobileNumpad");
   const timerDisplay = document.getElementById("timerDisplay");
   const mistakesDisplay = document.getElementById("mistakesDisplay");
@@ -108,7 +108,6 @@
         cell.className = "cell";
         cell.dataset.r = r;
         cell.dataset.c = c;
-        if (r === 2 || r === 5) cell.classList.add("box-row-end");
 
         const val = state.grid[r][c];
         const isGiven = state.givens[r][c] !== 0;
