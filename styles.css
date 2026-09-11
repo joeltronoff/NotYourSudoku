@@ -140,17 +140,17 @@ button {
 .constraint-svg { width: 100%; height: 100%; display: block; }
 .cage-line {
   stroke: var(--ink-soft);
-  stroke-width: 0.5;
-  stroke-dasharray: 1.6 1.2;
+  stroke-width: 0.3;
+  stroke-dasharray: 1 0.8;
   fill: none;
 }
 .cage-sum {
-  font-size: 3.4px;
+  font-size: 2.3px;
   font-family: var(--sans);
   font-weight: 600;
   fill: var(--ink);
 }
-.kropki-dot { stroke-width: 0.6; }
+.kropki-dot { stroke-width: 0.35; }
 .kropki-dot.kropki-white { fill: var(--paper); stroke: var(--ink); }
 .kropki-dot.kropki-black { fill: var(--ink); stroke: var(--ink); }
 

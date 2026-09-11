@@ -310,7 +310,7 @@
     const svg = document.createElementNS(svgNS, "svg");
     svg.setAttribute("viewBox", "0 0 90 90");
     svg.setAttribute("class", "constraint-svg");
-    const INSET = 1.3;
+    const INSET = 0.7;
 
     function addLine(x1, y1, x2, y2) {
       const line = document.createElementNS(svgNS, "line");
@@ -341,8 +341,8 @@
           if (r < tr || (r === tr && c < tc)) { tr = r; tc = c; }
         }
         const text = document.createElementNS(svgNS, "text");
-        text.setAttribute("x", tc * 10 + INSET + 0.6);
-        text.setAttribute("y", tr * 10 + INSET + 2.6);
+        text.setAttribute("x", tc * 10 + INSET + 0.35);
+        text.setAttribute("y", tr * 10 + INSET + 1.9);
         text.setAttribute("class", "cage-sum");
         text.textContent = cage.sum;
         svg.appendChild(text);
@@ -357,7 +357,7 @@
         const circle = document.createElementNS(svgNS, "circle");
         circle.setAttribute("cx", cx);
         circle.setAttribute("cy", cy);
-        circle.setAttribute("r", 1.3);
+        circle.setAttribute("r", 0.85);
         circle.setAttribute("class", dot.kind === "white" ? "kropki-dot kropki-white" : "kropki-dot kropki-black");
         svg.appendChild(circle);
       });
