@@ -4,7 +4,12 @@
 
   function currentConflicts() {
     const classic = findConflicts(state.grid);
-    const variant = findVariantConflicts(state.grid, { cages: state.cages, kropki: state.kropki });
+    const variant = findVariantConflicts(state.grid, {
+      cages: state.cages,
+      kropki: state.kropki,
+      lines: state.lines,
+      arrows: state.arrows,
+    });
     return new Set([...classic, ...variant]);
   }
 
@@ -57,6 +62,8 @@
       solution,
       cages: [],
       kropki: [],
+      lines: [],
+      arrows: [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -92,6 +99,8 @@
       solution: entry.solution,
       cages: entry.cages || [],
       kropki: entry.kropki || [],
+      lines: entry.lines || [],
+      arrows: entry.arrows || [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -142,6 +151,8 @@
       solution: state.solution,
       cages: state.cages,
       kropki: state.kropki,
+      lines: state.lines,
+      arrows: state.arrows,
       cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
       centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
       colors: state.colors,
@@ -166,6 +177,8 @@
         solution: data.solution,
         cages: data.cages || [],
         kropki: data.kropki || [],
+        lines: data.lines || [],
+        arrows: data.arrows || [],
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
@@ -304,7 +317,9 @@
     constraintOverlayEl.innerHTML = "";
     const hasCages = state.cages && state.cages.length > 0;
     const hasKropki = state.kropki && state.kropki.length > 0;
-    if (!hasCages && !hasKropki) return;
+    const hasLines = state.lines && state.lines.length > 0;
+    const hasArrows = state.arrows && state.arrows.length > 0;
+    if (!hasCages && !hasKropki && !hasLines && !hasArrows) return;
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -370,6 +385,44 @@
         circle.setAttribute("cy", cy);
         circle.setAttribute("r", 0.85);
         circle.setAttribute("class", dot.kind === "white" ? "kropki-dot kropki-white" : "kropki-dot kropki-black");
+        svg.appendChild(circle);
+      });
+    }
+
+    // Line-based constraints (thermo/whispers/renban/palindrome) all boil
+    // down to one polyline through the cells' centers, styled by kind.
+    if (hasLines) {
+      state.lines.forEach(line => {
+        const points = line.cells.map(([r, c]) => `${c * 10 + 5},${r * 10 + 5}`).join(" ");
+        const poly = document.createElementNS(svgNS, "polyline");
+        poly.setAttribute("points", points);
+        poly.setAttribute("class", `line-path line-${line.kind}`);
+        svg.appendChild(poly);
+        if (line.kind === "thermo") {
+          const [br, bc] = line.cells[0];
+          const bulb = document.createElementNS(svgNS, "circle");
+          bulb.setAttribute("cx", bc * 10 + 5);
+          bulb.setAttribute("cy", br * 10 + 5);
+          bulb.setAttribute("r", 2.6);
+          bulb.setAttribute("class", "thermo-bulb");
+          svg.appendChild(bulb);
+        }
+      });
+    }
+
+    if (hasArrows) {
+      state.arrows.forEach(arrow => {
+        const [cr, cc] = arrow.circle;
+        const points = [[cr, cc], ...arrow.cells].map(([r, c]) => `${c * 10 + 5},${r * 10 + 5}`).join(" ");
+        const poly = document.createElementNS(svgNS, "polyline");
+        poly.setAttribute("points", points);
+        poly.setAttribute("class", "line-path arrow-line");
+        svg.appendChild(poly);
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", cc * 10 + 5);
+        circle.setAttribute("cy", cr * 10 + 5);
+        circle.setAttribute("r", 2.8);
+        circle.setAttribute("class", "arrow-circle");
         svg.appendChild(circle);
       });
     }
@@ -501,7 +554,10 @@
   }
 
   function isVariantActive() {
-    return (state.cages && state.cages.length > 0) || (state.kropki && state.kropki.length > 0);
+    return (state.cages && state.cages.length > 0)
+      || (state.kropki && state.kropki.length > 0)
+      || (state.lines && state.lines.length > 0)
+      || (state.arrows && state.arrows.length > 0);
   }
 
   function updateHintAvailability() {

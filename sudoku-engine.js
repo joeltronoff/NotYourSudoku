@@ -403,6 +403,82 @@ function findVariantConflicts(grid, constraints) {
     }
   }
 
+  if (constraints.lines) {
+    for (const line of constraints.lines) {
+      const cells = line.cells;
+      if (line.kind === "thermo") {
+        for (let i = 1; i < cells.length; i++) {
+          const [r1, c1] = cells[i - 1], [r2, c2] = cells[i];
+          const v1 = grid[r1][c1], v2 = grid[r2][c2];
+          if (v1 !== 0 && v2 !== 0 && v1 >= v2) {
+            conflicts.add(`${r1},${c1}`);
+            conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "whispers") {
+        for (let i = 1; i < cells.length; i++) {
+          const [r1, c1] = cells[i - 1], [r2, c2] = cells[i];
+          const v1 = grid[r1][c1], v2 = grid[r2][c2];
+          if (v1 !== 0 && v2 !== 0 && Math.abs(v1 - v2) < 5) {
+            conflicts.add(`${r1},${c1}`);
+            conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "palindrome") {
+        for (let i = 0; i < Math.floor(cells.length / 2); i++) {
+          const [r1, c1] = cells[i], [r2, c2] = cells[cells.length - 1 - i];
+          const v1 = grid[r1][c1], v2 = grid[r2][c2];
+          if (v1 !== 0 && v2 !== 0 && v1 !== v2) {
+            conflicts.add(`${r1},${c1}`);
+            conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "renban") {
+        const filled = cells.filter(([r, c]) => grid[r][c] !== 0);
+        const seen = new Set();
+        for (const [r, c] of filled) {
+          const v = grid[r][c];
+          if (seen.has(v)) {
+            for (const [rr, cc] of cells) {
+              if (grid[rr][cc] === v) conflicts.add(`${rr},${cc}`);
+            }
+          }
+          seen.add(v);
+        }
+        if (filled.length === cells.length) {
+          const values = filled.map(([r, c]) => grid[r][c]);
+          const span = Math.max(...values) - Math.min(...values);
+          if (span !== cells.length - 1) {
+            for (const [r, c] of cells) conflicts.add(`${r},${c}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.arrows) {
+    for (const arrow of constraints.arrows) {
+      const [cr, cc] = arrow.circle;
+      const circleVal = grid[cr][cc];
+      if (circleVal === 0) continue;
+      let sum = 0;
+      let allFilled = true;
+      for (const [r, c] of arrow.cells) {
+        const v = grid[r][c];
+        if (v === 0) { allFilled = false; continue; }
+        sum += v;
+      }
+      const over = sum > circleVal;
+      const wrongTotal = allFilled && sum !== circleVal;
+      if (over || wrongTotal) {
+        conflicts.add(`${cr},${cc}`);
+        for (const [r, c] of arrow.cells) {
+          if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+        }
+      }
+    }
+  }
+
   return conflicts;
 }
 

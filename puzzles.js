@@ -84,6 +84,21 @@
     { a: [7, 1], b: [8, 1], kind: "black" },
   ];
 
+  // Lines & arrows sample: a thermometer (strictly increasing from the
+  // bulb), a German whispers line (adjacent digits differ by >= 5), a
+  // renban line (adjacent digits, any order, form a consecutive run),
+  // and an arrow (sum of the line cells equals the circled digit) — all
+  // verified against the true solution above. Holes sit on exactly the
+  // cells each constraint touches; everything else is given.
+  const linesHoles = [
+    [2, 5], [2, 6], [2, 7], [2, 8],
+    [0, 3], [1, 3], [1, 4],
+    [3, 7], [3, 8], [4, 8],
+    [8, 8], [7, 8], [6, 8],
+  ];
+  const linesGivens = SOLUTION.map(row => row.slice());
+  for (const [r, c] of linesHoles) linesGivens[r][c] = 0;
+
   window.PuzzleLibrary = [
     {
       id: "killer-sample-1",
@@ -102,6 +117,22 @@
       givens: kropkiGivens,
       solution: SOLUTION.map(row => row.slice()),
       kropki: kropkiDots,
+    },
+    {
+      id: "lines-sample-1",
+      title: "Lines & Arrows Sample",
+      variant: "lines",
+      blurb: "Thermometer (low→high), whispers (green, differ by 5+), renban (purple, consecutive), and an arrow (sum into the circle).",
+      givens: linesGivens,
+      solution: SOLUTION.map(row => row.slice()),
+      lines: [
+        { kind: "thermo", cells: [[2, 5], [2, 6], [2, 7], [2, 8]] },
+        { kind: "whispers", cells: [[0, 3], [1, 3], [1, 4]] },
+        { kind: "renban", cells: [[3, 7], [3, 8], [4, 8]] },
+      ],
+      arrows: [
+        { circle: [8, 8], cells: [[7, 8], [6, 8]] },
+      ],
     },
   ];
 })();
