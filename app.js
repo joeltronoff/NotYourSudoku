@@ -35,6 +35,67 @@
     "#9C8F72", // stone
   ];
 
+  // ---------------- Progress tracking (persists across puzzles) ----------------
+  const PROGRESS_KEY = "solvers-notebook-progress-v1";
+  function loadProgress() {
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      return {
+        completed: Array.isArray(data.completed) ? data.completed : [],
+        classicSolved: data.classicSolved || 0,
+      };
+    } catch (e) {
+      return { completed: [], classicSolved: 0 };
+    }
+  }
+  function saveProgress(progress) {
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); } catch (e) {}
+  }
+  function recordCompletion() {
+    const progress = loadProgress();
+    if (state.puzzleId) {
+      if (!progress.completed.includes(state.puzzleId)) progress.completed.push(state.puzzleId);
+    } else {
+      progress.classicSolved += 1;
+    }
+    saveProgress(progress);
+  }
+
+  // ---------------- Variant menu metadata ----------------
+  const VARIANT_INFO = {
+    killer: {
+      title: "Killer Cages",
+      blurb: "Dashed cages sum to a target, with no repeated digit inside.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" stroke-dasharray="3 2.5"/></svg>',
+    },
+    kropki: {
+      title: "Kropki Dots",
+      blurb: "White dots mark consecutive neighbors, black dots mark a 2:1 ratio.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="12" x2="17" y2="12"/><circle cx="7" cy="12" r="3" fill="currentColor"/><circle cx="17" cy="12" r="3" fill="var(--paper)"/></svg>',
+    },
+    lines: {
+      title: "Lines & Arrows",
+      blurb: "Thermometers, whispers, renban lines, and sum-into-the-circle arrows.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3" fill="currentColor"/><path d="M8 16l9-9"/><path d="M13.5 7h3.5v3.5"/></svg>',
+    },
+    antiknight: {
+      title: "Anti-Knight",
+      blurb: "No two cells a knight's-move apart may repeat a digit.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="8" r="2" fill="currentColor" stroke="none"/><path d="M6 17L6 10L15 8" stroke-dasharray="2.5 2.5"/></svg>',
+    },
+    sandwich: {
+      title: "Sandwich",
+      blurb: "Clues give the sum of digits sandwiched between the 1 and the 9.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16"/><path d="M4 15h16"/><circle cx="8" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
+    },
+    xv: {
+      title: "XV",
+      blurb: "An X between cells sums to 10, a V sums to 5.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l6 10M10 7l-6 10"/><path d="M14 7l3 8 3-8"/></svg>',
+    },
+  };
+
   let state = null; // full game state, see newGame()
   let timerInterval = null;
 
@@ -45,6 +106,103 @@
   const hintOutput = document.getElementById("hintOutput");
   const winOverlay = document.getElementById("winOverlay");
   const hintBtn = document.getElementById("hintBtn");
+
+  // ---------------- Main menu ----------------
+  const titlebarEl = document.querySelector(".titlebar");
+  const layoutEl = document.querySelector(".layout");
+  const mainMenuEl = document.getElementById("mainMenu");
+  const variantMenuEl = document.getElementById("variantMenu");
+  const menuContinueEl = document.getElementById("menuContinue");
+
+  function showGame() {
+    mainMenuEl.hidden = true;
+    variantMenuEl.hidden = true;
+    titlebarEl.hidden = false;
+    layoutEl.hidden = false;
+  }
+  function showMenu() {
+    variantMenuEl.hidden = true;
+    titlebarEl.hidden = true;
+    layoutEl.hidden = true;
+    mainMenuEl.hidden = false;
+    renderMainMenu();
+  }
+  function showVariantMenu(variantKey) {
+    mainMenuEl.hidden = true;
+    titlebarEl.hidden = true;
+    layoutEl.hidden = true;
+    variantMenuEl.hidden = false;
+    renderVariantMenu(variantKey);
+  }
+
+  function capitalize(s) { return s[0].toUpperCase() + s.slice(1); }
+
+  function renderMainMenu() {
+    const progress = loadProgress();
+
+    const hasActive = !!state && !state.won;
+    menuContinueEl.hidden = !hasActive;
+    if (hasActive) {
+      document.getElementById("menuContinueTitle").textContent =
+        state.title || `${capitalize(state.difficulty)} classic`;
+    }
+
+    document.getElementById("classicSolvedCount").textContent =
+      `${progress.classicSolved} solved`;
+
+    const byVariant = {};
+    (window.PuzzleLibrary || []).forEach(entry => {
+      (byVariant[entry.variant] = byVariant[entry.variant] || []).push(entry);
+    });
+
+    const listEl = document.getElementById("menuVariantList");
+    listEl.innerHTML = "";
+    Object.keys(VARIANT_INFO).forEach(key => {
+      const entries = byVariant[key] || [];
+      if (entries.length === 0) return;
+      const info = VARIANT_INFO[key];
+      const solvedCount = entries.filter(e => progress.completed.includes(e.id)).length;
+      const card = document.createElement("button");
+      card.className = "menu-card menu-variant-card";
+      card.innerHTML = `
+        <div class="menu-card-icon">${info.icon}</div>
+        <div class="menu-card-body">
+          <div class="menu-card-title-row">
+            <span class="menu-card-title">${info.title}</span>
+            <span class="menu-card-count${solvedCount === entries.length ? " all-solved" : ""}">${solvedCount}/${entries.length} solved</span>
+          </div>
+          <p class="menu-card-blurb">${info.blurb}</p>
+        </div>
+      `;
+      card.addEventListener("click", () => showVariantMenu(key));
+      listEl.appendChild(card);
+    });
+  }
+
+  function renderVariantMenu(key) {
+    const info = VARIANT_INFO[key];
+    document.getElementById("variantMenuTitle").textContent = info.title;
+    document.getElementById("variantMenuBlurb").textContent = info.blurb;
+
+    const progress = loadProgress();
+    const entries = (window.PuzzleLibrary || []).filter(e => e.variant === key);
+    const listEl = document.getElementById("menuPuzzleList");
+    listEl.innerHTML = "";
+    entries.forEach(entry => {
+      const solved = progress.completed.includes(entry.id);
+      const row = document.createElement("button");
+      row.className = "menu-puzzle-row" + (solved ? " solved" : "");
+      row.innerHTML = `
+        <span class="menu-puzzle-check">${solved ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : ""}</span>
+        <span class="menu-puzzle-info">
+          <span class="menu-puzzle-title">${entry.title}</span>
+          <span class="menu-puzzle-blurb">${entry.blurb || ""}</span>
+        </span>
+      `;
+      row.addEventListener("click", () => loadPuzzle(entry));
+      listEl.appendChild(row);
+    });
+  }
 
   function emptyNotes() {
     return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
@@ -89,7 +247,6 @@
     difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
-    closeSettings();
     setInputMode("digit");
     startTimer();
     saveState();
@@ -97,6 +254,7 @@
     renderConstraintOverlays();
     renderSandwichClues();
     updateHintAvailability();
+    showGame();
   }
 
   // Loads a hand-authored variant puzzle from window.PuzzleLibrary instead
@@ -130,7 +288,6 @@
     difficultyDisplay.textContent = entry.title;
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
-    closeSettings();
     setInputMode("digit");
     startTimer();
     saveState();
@@ -138,6 +295,7 @@
     renderConstraintOverlays();
     renderSandwichClues();
     updateHintAvailability();
+    showGame();
   }
 
   function startTimer() {
@@ -707,8 +865,10 @@
 
   function checkWin() {
     if (isBoardComplete(state.grid) && currentConflicts().size === 0) {
+      const alreadyWon = state.won;
       state.won = true;
       saveState();
+      if (!alreadyWon) recordCompletion();
       document.getElementById("winTime").textContent = formatTime(state.seconds);
       document.getElementById("winMistakes").textContent = `${state.mistakes} mistake${state.mistakes === 1 ? "" : "s"}`;
       winOverlay.classList.add("show");
@@ -760,38 +920,18 @@
   });
 
   // ---------------- Wiring ----------------
-  const settingsBackdrop = document.getElementById("settingsBackdrop");
-  function openSettings() { settingsBackdrop.classList.add("show"); }
-  function closeSettings() { settingsBackdrop.classList.remove("show"); }
-  document.getElementById("settingsBtn").addEventListener("click", openSettings);
-  settingsBackdrop.addEventListener("click", (e) => {
-    if (e.target === settingsBackdrop) closeSettings();
-  });
+  document.getElementById("settingsBtn").addEventListener("click", showMenu);
 
-  document.getElementById("newPuzzleBtn").addEventListener("click", () => {
-    const active = document.querySelector(".chip.active");
-    newGame(active ? active.dataset.diff : "medium");
-  });
   document.getElementById("winNewBtn").addEventListener("click", () => {
-    const active = document.querySelector(".chip.active");
-    newGame(active ? active.dataset.diff : "medium");
+    winOverlay.classList.remove("show");
+    showMenu();
   });
 
-  document.querySelectorAll(".chip").forEach(chip => {
-    chip.addEventListener("click", () => {
-      document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-      chip.classList.add("active");
-    });
-  });
-  document.querySelector('.chip[data-diff="medium"]').classList.add("active");
+  document.getElementById("variantBackBtn").addEventListener("click", showMenu);
+  menuContinueEl.addEventListener("click", showGame);
 
-  const puzzleLibraryEl = document.getElementById("puzzleLibrary");
-  (window.PuzzleLibrary || []).forEach(entry => {
-    const btn = document.createElement("button");
-    btn.className = "btn puzzle-entry";
-    btn.innerHTML = `<span class="puzzle-entry-title">${entry.title}</span><span class="puzzle-entry-blurb">${entry.blurb || ""}</span>`;
-    btn.addEventListener("click", () => loadPuzzle(entry));
-    puzzleLibraryEl.appendChild(btn);
+  document.querySelectorAll("#menuDifficultyRow .chip").forEach(chip => {
+    chip.addEventListener("click", () => newGame(chip.dataset.diff));
   });
 
   document.getElementById("undoBtn").addEventListener("click", undo);
@@ -810,7 +950,7 @@
 
   // Physical keyboard support (useful with a Fold's larger screen / attached keyboard)
   document.addEventListener("keydown", (e) => {
-    if (state.selected.length === 0) return;
+    if (!state || layoutEl.hidden || state.selected.length === 0) return;
     const [r, c] = state.selected[state.selected.length - 1];
     if (e.key >= "1" && e.key <= "9") inputNumber(parseInt(e.key, 10));
     else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") eraseCell();
@@ -869,13 +1009,14 @@
   }
 
   // ---------------- Boot ----------------
-  if (!loadState()) {
-    newGame("medium");
-  } else {
-    document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.diff === state.difficulty));
+  // The menu is always the first thing shown; a saved in-progress game (if
+  // any) is loaded into memory so "Continue" can drop straight back into it,
+  // but the board itself only becomes visible once something is chosen.
+  if (loadState()) {
     render();
     renderConstraintOverlays();
     renderSandwichClues();
     updateHintAvailability();
   }
+  showMenu();
 })();

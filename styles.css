@@ -22,6 +22,13 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute's default UA rule (`[hidden]{display:none}`) has
+   the same specificity as any single-class `display` rule below it, and
+   author styles win ties — so without this, toggling `.hidden` on an
+   element that also matches e.g. `.layout{display:flex}` does nothing
+   visually. This keeps `hidden` authoritative everywhere in the app. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -465,30 +472,6 @@ button {
   text-decoration: underline;
 }
 
-/* ---------- Popover (settings / new puzzle) ---------- */
-.popover-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(43, 42, 39, 0.35);
-  display: none;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 60;
-}
-.popover-backdrop.show { display: flex; }
-.popover {
-  background: var(--paper);
-  width: 100%;
-  max-width: 480px;
-  border-radius: 20px 20px 0 0;
-  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
-}
-.difficulty-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin-bottom: 12px;
-}
 .chip {
   padding: 12px 4px;
   border-radius: 10px;
@@ -523,23 +506,169 @@ button {
 }
 .btn.small { width: auto; padding: 7px 12px; font-size: 13px; }
 
-.puzzle-library-label {
-  margin: 18px 0 8px;
-  font-size: 12px;
+/* ---------- Main menu ---------- */
+.menu-screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.menu-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 8px 18px calc(24px + env(safe-area-inset-bottom));
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+}
+.menu-header { padding: 10px 2px 0; }
+.menu-header h1 {
+  font-family: var(--serif);
+  font-size: 26px;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+.menu-tagline {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.menu-continue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-align: left;
+}
+.menu-continue-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.menu-continue-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+}
+.menu-continue-title {
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-section-title {
+  margin: 0 0 10px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
-.puzzle-library { display: flex; flex-direction: column; gap: 8px; }
-.puzzle-entry {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+
+.menu-card {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  background: var(--panel-bg);
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
   text-align: left;
+  color: var(--ink);
 }
-.puzzle-entry-title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
-.puzzle-entry-blurb { font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
+.menu-card-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--accent-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.menu-card-body { flex: 1; min-width: 0; }
+.menu-card-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.menu-card-title { font-size: 15.5px; font-weight: 600; }
+.menu-card-count {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.menu-card-count.all-solved { color: var(--accent-dark); }
+.menu-card-blurb {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.menu-diff-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.menu-card-list { display: flex; flex-direction: column; gap: 10px; }
+.menu-variant-card { cursor: pointer; }
+.menu-variant-card:active { background: var(--accent-soft); }
+
+.menu-subheader { display: flex; align-items: center; gap: 6px; padding: 10px 0 0; }
+.menu-back { flex-shrink: 0; }
+.menu-subheader-text h1 {
+  font-family: var(--serif);
+  font-size: 21px;
+  margin: 0 0 2px;
+}
+
+.menu-puzzle-list { display: flex; flex-direction: column; gap: 8px; }
+.menu-puzzle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: var(--panel-bg);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--ink);
+}
+.menu-puzzle-row:active { background: var(--accent-soft); }
+.menu-puzzle-check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--paper-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.menu-puzzle-row.solved .menu-puzzle-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.menu-puzzle-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.menu-puzzle-title { font-size: 14.5px; font-weight: 600; }
+.menu-puzzle-blurb { font-size: 12px; color: var(--ink-soft); line-height: 1.3; }
 
 /* ---------- Win overlay ---------- */
 .overlay {

@@ -17,13 +17,76 @@
 
 <div class="app" id="app">
 
+  <!-- Main menu: the first thing you see, and reachable any time via the
+       gear icon. Lists Classic plus every variant with puzzles in the
+       library, each showing how many of that variant's puzzles are solved. -->
+  <div class="menu-screen" id="mainMenu">
+    <div class="menu-scroll">
+      <header class="menu-header">
+        <h1>Solver's Notebook</h1>
+        <p class="menu-tagline">Pick a puzzle to start solving.</p>
+      </header>
+
+      <button class="menu-continue" id="menuContinue" hidden>
+        <span class="menu-continue-text">
+          <span class="menu-continue-label">Continue</span>
+          <span class="menu-continue-title" id="menuContinueTitle"></span>
+        </span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+
+      <section class="menu-section">
+        <h2 class="menu-section-title">Classic</h2>
+        <div class="menu-card menu-classic-card">
+          <div class="menu-card-icon">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M9.5 3.5v17M14.5 3.5v17M3.5 9.5h17M3.5 14.5h17"/></svg>
+          </div>
+          <div class="menu-card-body">
+            <div class="menu-card-title-row">
+              <span class="menu-card-title">Classic Sudoku</span>
+              <span class="menu-card-count" id="classicSolvedCount">0 solved</span>
+            </div>
+            <p class="menu-card-blurb">Standard rules. Pick a difficulty to deal a fresh puzzle.</p>
+            <div class="menu-diff-row" id="menuDifficultyRow">
+              <button class="chip" data-diff="easy">Easy</button>
+              <button class="chip" data-diff="medium">Medium</button>
+              <button class="chip" data-diff="hard">Hard</button>
+              <button class="chip" data-diff="expert">Expert</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="menu-section">
+        <h2 class="menu-section-title">Variants</h2>
+        <div class="menu-card-list" id="menuVariantList"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Variant puzzle list: shown after tapping a variant card above. -->
+  <div class="menu-screen" id="variantMenu" hidden>
+    <div class="menu-scroll">
+      <header class="menu-subheader">
+        <button class="icon-btn menu-back" id="variantBackBtn" aria-label="Back to menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="menu-subheader-text">
+          <h1 id="variantMenuTitle">Variant</h1>
+          <p class="menu-tagline" id="variantMenuBlurb"></p>
+        </div>
+      </header>
+      <div class="menu-puzzle-list" id="menuPuzzleList"></div>
+    </div>
+  </div>
+
   <!-- Header: minimal, just status -->
-  <header class="titlebar">
+  <header class="titlebar" hidden>
     <span class="difficulty-tag" id="difficultyDisplay">Medium</span>
     <span class="timer" id="timerDisplay">00:00</span>
   </header>
 
-  <main class="layout">
+  <main class="layout" hidden>
 
     <!-- Puzzle column: board takes majority of space -->
     <section class="puzzle-col">
@@ -48,7 +111,7 @@
     <aside class="panel">
 
       <div class="icon-row" id="iconRow">
-        <button class="icon-tool" id="settingsBtn" title="New puzzle / difficulty" aria-label="New puzzle and difficulty">
+        <button class="icon-tool" id="settingsBtn" title="Menu" aria-label="Open puzzle menu">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <button class="icon-tool" id="undoBtn" title="Undo" aria-label="Undo">
@@ -106,29 +169,13 @@
 
   </main>
 
-  <!-- Settings popover: difficulty + new puzzle -->
-  <div class="popover-backdrop" id="settingsBackdrop">
-    <div class="popover" id="settingsPopover">
-      <div class="difficulty-grid" id="difficultyGrid">
-        <button class="chip" data-diff="easy">Easy</button>
-        <button class="chip" data-diff="medium">Medium</button>
-        <button class="chip" data-diff="hard">Hard</button>
-        <button class="chip" data-diff="expert">Expert</button>
-      </div>
-      <button class="btn primary" id="newPuzzleBtn">Start new puzzle</button>
-
-      <div class="puzzle-library-label">Featured puzzles</div>
-      <div class="puzzle-library" id="puzzleLibrary"></div>
-    </div>
-  </div>
-
   <!-- Win overlay -->
   <div class="overlay" id="winOverlay">
     <div class="overlay-card">
       <p class="overlay-eyebrow">Solved</p>
       <h2 id="winTime">00:00</h2>
       <p id="winMistakes">0 mistakes</p>
-      <button class="btn primary" id="winNewBtn">New puzzle</button>
+      <button class="btn primary" id="winNewBtn">Choose next puzzle</button>
     </div>
   </div>
 
