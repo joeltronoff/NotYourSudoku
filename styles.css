@@ -201,7 +201,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(7px, 1.5vmin, 11px);
+  font-size: clamp(9px, 3.5vmin, 15px);
+  font-size: 30cqh;
+  line-height: 1;
   color: var(--ink-soft);
   font-family: var(--sans);
 }
@@ -212,7 +214,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(7px, 1.8vmin, 13px);
+  font-size: clamp(9px, 4vmin, 17px);
+  font-size: 32cqh;
+  line-height: 1;
   letter-spacing: 0.5px;
   color: var(--ink-soft);
   font-family: var(--sans);
