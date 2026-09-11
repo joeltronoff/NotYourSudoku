@@ -392,18 +392,31 @@
     // Line-based constraints (thermo/whispers/renban/palindrome) all boil
     // down to one polyline through the cells' centers, styled by kind.
     if (hasLines) {
+      const THERMO_BULB_R = 3.4;
       state.lines.forEach(line => {
-        const points = line.cells.map(([r, c]) => `${c * 10 + 5},${r * 10 + 5}`).join(" ");
+        const cellPoints = line.cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5]);
+        let points = cellPoints;
+        if (line.kind === "thermo" && cellPoints.length > 1) {
+          // Start the stem at the bulb's edge, not its center, so the
+          // translucent line and bulb fill never overlap (which would
+          // paint a visibly darker seam where they crossed).
+          const [bx, by] = cellPoints[0];
+          const [nx, ny] = cellPoints[1];
+          const dx = nx - bx, dy = ny - by;
+          const dist = Math.hypot(dx, dy) || 1;
+          const edgeStart = [bx + (dx / dist) * THERMO_BULB_R, by + (dy / dist) * THERMO_BULB_R];
+          points = [edgeStart, ...cellPoints.slice(1)];
+        }
         const poly = document.createElementNS(svgNS, "polyline");
-        poly.setAttribute("points", points);
+        poly.setAttribute("points", points.map(p => p.join(",")).join(" "));
         poly.setAttribute("class", `line-path line-${line.kind}`);
         svg.appendChild(poly);
         if (line.kind === "thermo") {
-          const [br, bc] = line.cells[0];
+          const [bx, by] = cellPoints[0];
           const bulb = document.createElementNS(svgNS, "circle");
-          bulb.setAttribute("cx", bc * 10 + 5);
-          bulb.setAttribute("cy", br * 10 + 5);
-          bulb.setAttribute("r", 2.6);
+          bulb.setAttribute("cx", bx);
+          bulb.setAttribute("cy", by);
+          bulb.setAttribute("r", THERMO_BULB_R);
           bulb.setAttribute("class", "thermo-bulb");
           svg.appendChild(bulb);
         }
