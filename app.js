@@ -246,6 +246,14 @@
           cell.classList.add("hint-target");
         }
 
+        // Appended before the digit/notes below so it paints underneath
+        // them (see computeCellDecorations for why this has to be a
+        // per-cell fragment rather than one global overlay).
+        const decos = cellDecorations.get(`${r},${c}`);
+        if (decos && decos.length > 0) {
+          cell.appendChild(buildCellDecorationSvg(decos));
+        }
+
         if (val !== 0) {
           const span = document.createElement("span");
           span.className = "value";
@@ -315,11 +323,10 @@
   const constraintOverlayEl = document.getElementById("constraintOverlay");
   function renderConstraintOverlays() {
     constraintOverlayEl.innerHTML = "";
+    computeCellDecorations();
     const hasCages = state.cages && state.cages.length > 0;
     const hasKropki = state.kropki && state.kropki.length > 0;
-    const hasLines = state.lines && state.lines.length > 0;
-    const hasArrows = state.arrows && state.arrows.length > 0;
-    if (!hasCages && !hasKropki && !hasLines && !hasArrows) return;
+    if (!hasCages && !hasKropki) return;
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -389,89 +396,128 @@
       });
     }
 
-    // Line-based constraints (thermo/whispers/renban/palindrome) all boil
-    // down to one polyline through the cells' centers, styled by kind.
-    if (hasLines) {
-      const THERMO_BULB_R = 3.4;
-      state.lines.forEach(line => {
-        const cellPoints = line.cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5]);
-        let points = cellPoints;
-        if (line.kind === "thermo" && cellPoints.length > 1) {
-          // Start the stem at the bulb's edge, not its center, so the
-          // translucent line and bulb fill never overlap (which would
-          // paint a visibly darker seam where they crossed).
-          const [bx, by] = cellPoints[0];
-          const [nx, ny] = cellPoints[1];
-          const dx = nx - bx, dy = ny - by;
-          const dist = Math.hypot(dx, dy) || 1;
-          const edgeStart = [bx + (dx / dist) * THERMO_BULB_R, by + (dy / dist) * THERMO_BULB_R];
-          points = [edgeStart, ...cellPoints.slice(1)];
-        }
-        const poly = document.createElementNS(svgNS, "polyline");
-        poly.setAttribute("points", points.map(p => p.join(",")).join(" "));
-        poly.setAttribute("class", `line-path line-${line.kind}`);
-        svg.appendChild(poly);
-        if (line.kind === "thermo") {
-          const [bx, by] = cellPoints[0];
-          const bulb = document.createElementNS(svgNS, "circle");
-          bulb.setAttribute("cx", bx);
-          bulb.setAttribute("cy", by);
-          bulb.setAttribute("r", THERMO_BULB_R);
-          bulb.setAttribute("class", "thermo-bulb");
-          svg.appendChild(bulb);
-        }
-      });
-    }
-
-    if (hasArrows) {
-      const CIRCLE_R = 4;
-      const HEAD_LEN = 1.8;
-      const HEAD_WIDTH = 1.1;
-      state.arrows.forEach(arrow => {
-        const [cr, cc] = arrow.circle;
-        const ccx = cc * 10 + 5, ccy = cr * 10 + 5;
-        const cellPoints = arrow.cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5]);
-
-        // Start the line at the circle's edge (toward the first line cell)
-        // rather than its center, so it never overlaps the bulb.
-        const [fx, fy] = cellPoints[0];
-        const dx0 = fx - ccx, dy0 = fy - ccy;
-        const d0 = Math.hypot(dx0, dy0) || 1;
-        const start = [ccx + (dx0 / d0) * CIRCLE_R, ccy + (dy0 / d0) * CIRCLE_R];
-
-        const points = [start, ...cellPoints];
-        const poly = document.createElementNS(svgNS, "polyline");
-        poly.setAttribute("points", points.map(p => p.join(",")).join(" "));
-        poly.setAttribute("class", "line-path arrow-line");
-        svg.appendChild(poly);
-
-        // Arrowhead at the tip, oriented along the line's final segment.
-        const [lx, ly] = cellPoints[cellPoints.length - 1];
-        const [px, py] = cellPoints.length > 1 ? cellPoints[cellPoints.length - 2] : start;
-        const adx = lx - px, ady = ly - py;
-        const alen = Math.hypot(adx, ady) || 1;
-        const aux = adx / alen, auy = ady / alen;
-        const perpX = -auy, perpY = aux;
-        const backX = lx - aux * HEAD_LEN, backY = ly - auy * HEAD_LEN;
-        const head = document.createElementNS(svgNS, "polyline");
-        head.setAttribute("points", [
-          [backX + perpX * HEAD_WIDTH, backY + perpY * HEAD_WIDTH],
-          [lx, ly],
-          [backX - perpX * HEAD_WIDTH, backY - perpY * HEAD_WIDTH],
-        ].map(p => p.join(",")).join(" "));
-        head.setAttribute("class", "arrow-head");
-        svg.appendChild(head);
-
-        const circle = document.createElementNS(svgNS, "circle");
-        circle.setAttribute("cx", ccx);
-        circle.setAttribute("cy", ccy);
-        circle.setAttribute("r", CIRCLE_R);
-        circle.setAttribute("class", "arrow-circle");
-        svg.appendChild(circle);
-      });
-    }
-
     constraintOverlayEl.appendChild(svg);
+  }
+
+  // Lines/arrows are drawn per-cell (inside each cell's own DOM node,
+  // ahead of its digit) rather than as one global overlay. A single
+  // overlay sitting above #boardGrid paints above every cell's entire
+  // box — background AND text together, since each .cell is a
+  // container-query box and thus its own stacking context — so there is
+  // no z-index that puts a global decoration behind text but above a
+  // cell's background. Splitting each line at the midpoint between two
+  // adjacent cell centers and giving each cell only its own half keeps
+  // the drawing seamless while letting normal DOM order (decoration
+  // fragment appended before the digit) put the digit on top, cell by
+  // cell. cages/kropki don't have this problem (they sit near cell edges,
+  // not over the digit) and stay in the global overlay above.
+  let cellDecorations = new Map();
+  function computeCellDecorations() {
+    cellDecorations = new Map();
+    function addDeco(r, c, deco) {
+      const key = `${r},${c}`;
+      if (!cellDecorations.has(key)) cellDecorations.set(key, []);
+      cellDecorations.get(key).push(deco);
+    }
+    function localize(r, c, x, y) {
+      return [x - c * 10, y - r * 10];
+    }
+    // Adds the two half-segments (one per cell) for the straight run
+    // between cells[i-1] and cells[i], optionally starting the first
+    // cell's half from a circle's edge instead of its center.
+    function addHalfSegments(cells, centers, i, className, edgeR) {
+      const [pr, pc] = cells[i - 1];
+      const [r, c] = cells[i];
+      const [px, py] = centers[i - 1];
+      const [cx, cy] = centers[i];
+      const midX = (cx + px) / 2, midY = (cy + py) / 2;
+      let startX = px, startY = py;
+      if (edgeR && i === 1) {
+        const dx = cx - px, dy = cy - py;
+        const dist = Math.hypot(dx, dy) || 1;
+        startX = px + (dx / dist) * edgeR;
+        startY = py + (dy / dist) * edgeR;
+      }
+      const [x1, y1] = localize(pr, pc, startX, startY);
+      const [x2, y2] = localize(pr, pc, midX, midY);
+      addDeco(pr, pc, { kind: "line", x1, y1, x2, y2, className });
+      const [x3, y3] = localize(r, c, midX, midY);
+      const [x4, y4] = localize(r, c, cx, cy);
+      addDeco(r, c, { kind: "line", x1: x3, y1: y3, x2: x4, y2: y4, className });
+    }
+
+    const THERMO_BULB_R = 3.4;
+    const ARROW_CIRCLE_R = 4;
+    const HEAD_LEN = 1.8, HEAD_WIDTH = 1.1;
+
+    (state.lines || []).forEach(line => {
+      const cells = line.cells;
+      const centers = cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5]);
+      const className = `line-path line-${line.kind}`;
+      for (let i = 1; i < cells.length; i++) {
+        addHalfSegments(cells, centers, i, className, line.kind === "thermo" ? THERMO_BULB_R : null);
+      }
+      if (line.kind === "thermo") {
+        const [br, bc] = cells[0];
+        const [bx, by] = localize(br, bc, ...centers[0]);
+        addDeco(br, bc, { kind: "circle", cx: bx, cy: by, r: THERMO_BULB_R, className: "thermo-bulb" });
+      }
+    });
+
+    (state.arrows || []).forEach(arrow => {
+      const [cr, cc] = arrow.circle;
+      const ccx = cc * 10 + 5, ccy = cr * 10 + 5;
+      const cells = [[cr, cc], ...arrow.cells];
+      const centers = [[ccx, ccy], ...arrow.cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5])];
+      for (let i = 1; i < cells.length; i++) {
+        addHalfSegments(cells, centers, i, "line-path arrow-line", ARROW_CIRCLE_R);
+      }
+      const [lccx, lccy] = localize(cr, cc, ccx, ccy);
+      addDeco(cr, cc, { kind: "circle", cx: lccx, cy: lccy, r: ARROW_CIRCLE_R, className: "arrow-circle" });
+
+      // Arrowhead at the tip, local to the last cell only.
+      const [lr, lc] = arrow.cells[arrow.cells.length - 1];
+      const tipCenters = centers.slice(1);
+      const [lx, ly] = tipCenters[tipCenters.length - 1];
+      const [px, py] = tipCenters.length > 1 ? tipCenters[tipCenters.length - 2] : centers[0];
+      const adx = lx - px, ady = ly - py;
+      const alen = Math.hypot(adx, ady) || 1;
+      const aux = adx / alen, auy = ady / alen;
+      const perpX = -auy, perpY = aux;
+      const backX = lx - aux * HEAD_LEN, backY = ly - auy * HEAD_LEN;
+      const p1 = localize(lr, lc, backX + perpX * HEAD_WIDTH, backY + perpY * HEAD_WIDTH);
+      const p2 = localize(lr, lc, lx, ly);
+      const p3 = localize(lr, lc, backX - perpX * HEAD_WIDTH, backY - perpY * HEAD_WIDTH);
+      addDeco(lr, lc, { kind: "polyline", points: [p1, p2, p3].map(p => p.join(",")).join(" "), className: "arrow-head" });
+    });
+  }
+
+  function buildCellDecorationSvg(decos) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 10 10");
+    svg.setAttribute("class", "cell-deco-svg");
+    decos.forEach(d => {
+      let el;
+      if (d.kind === "line") {
+        el = document.createElementNS(svgNS, "line");
+        el.setAttribute("x1", d.x1);
+        el.setAttribute("y1", d.y1);
+        el.setAttribute("x2", d.x2);
+        el.setAttribute("y2", d.y2);
+      } else if (d.kind === "circle") {
+        el = document.createElementNS(svgNS, "circle");
+        el.setAttribute("cx", d.cx);
+        el.setAttribute("cy", d.cy);
+        el.setAttribute("r", d.r);
+      } else {
+        el = document.createElementNS(svgNS, "polyline");
+        el.setAttribute("points", d.points);
+      }
+      el.setAttribute("class", d.className);
+      svg.appendChild(el);
+    });
+    return svg;
   }
 
   function selectCell(r, c) {

@@ -154,13 +154,21 @@ button {
 .kropki-dot.kropki-white { fill: var(--paper); stroke: var(--ink); }
 .kropki-dot.kropki-black { fill: var(--ink); stroke: var(--ink); }
 
+/* Thermo/whispers/renban/palindrome/arrow decorations are drawn per-cell
+   (see computeCellDecorations in app.js), each as a small SVG sized to
+   exactly one cell and inserted ahead of the digit in that cell's own
+   DOM order — so the digit always paints on top, no translucency
+   needed. */
+.cell-deco-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 .line-path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-/* Thermo/arrow decorations paint above cell text (same overlay layer as
-   everything else), so they're sized down and made translucent — a
-   solid fill at full size would blot the digit out completely instead
-   of just tinting behind it. */
-.line-thermo { stroke: #CFC7B8; stroke-width: 1.4; opacity: 0.55; }
-.thermo-bulb { fill: #CFC7B8; opacity: 0.55; }
+.line-thermo { stroke: #CFC7B8; stroke-width: 1.4; }
+.thermo-bulb { fill: #CFC7B8; }
 .line-whispers { stroke: #6FA85C; stroke-width: 1.9; }
 .line-renban { stroke: #B98FD1; stroke-width: 1.9; }
 .line-palindrome { stroke: #A9A296; stroke-width: 1.9; }
