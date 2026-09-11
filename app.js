@@ -152,6 +152,11 @@
         const shade = state.colors[r][c];
         if (shade !== null && shade !== undefined) {
           cell.style.setProperty("--cell-shade", CELL_COLORS[shade]);
+          // Same-colored neighbors read as one shape rather than a row of
+          // separate tiles — hide the thin grid line between them (the
+          // thicker 3x3 box-separator overlay is unaffected either way).
+          if (c < 8 && state.colors[r][c + 1] === shade) cell.style.borderRightColor = "transparent";
+          if (r < 8 && state.colors[r + 1][c] === shade) cell.style.borderBottomColor = "transparent";
         }
 
         if (state.selected.length > 0) {
