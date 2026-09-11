@@ -108,8 +108,7 @@
         cell.className = "cell";
         cell.dataset.r = r;
         cell.dataset.c = c;
-        if (r % 3 === 0) cell.classList.add("row-thick-top");
-        if (r === 8) cell.classList.add("row-thick-bottom");
+        if (r === 2 || r === 5) cell.classList.add("box-row-end");
 
         const val = state.grid[r][c];
         const isGiven = state.givens[r][c] !== 0;
