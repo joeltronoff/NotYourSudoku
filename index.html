@@ -52,9 +52,6 @@
         <button class="icon-tool" id="eraseBtn" title="Erase" aria-label="Erase cell">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 19"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
         </button>
-        <button class="icon-tool" id="notesBtn" title="Pencil marks" aria-label="Toggle pencil marks">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-        </button>
         <button class="icon-tool" id="hintBtn" title="Hint" aria-label="Get a hint">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.6.5 1 1.3 1 2.1V16h6v-.4c0-.8.4-1.6 1-2.1A6 6 0 0 0 12 3Z"/></svg>
         </button>
@@ -65,7 +62,40 @@
 
       <div class="hint-output" id="hintOutput"></div>
 
-      <div class="mobile-numpad" id="mobileNumpad"></div>
+      <div class="input-row">
+        <div class="mobile-numpad" id="mobileNumpad"></div>
+
+        <div class="mode-rail" id="modeRail">
+          <button class="mode-btn active" data-mode="digit" title="Enter digit" aria-label="Enter final digit">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>
+              <text x="12" y="16.5" text-anchor="middle" font-size="11" font-family="inherit" font-weight="700" stroke="none" fill="currentColor">5</text>
+            </svg>
+          </button>
+          <button class="mode-btn" data-mode="corner" title="Corner notes" aria-label="Corner pencil marks">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>
+              <circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/>
+              <circle cx="16.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/>
+              <circle cx="7.5" cy="16.5" r="1.3" fill="currentColor" stroke="none"/>
+              <circle cx="16.5" cy="16.5" r="1.3" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
+          <button class="mode-btn" data-mode="center" title="Center notes" aria-label="Center pencil marks">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>
+              <circle cx="9.3" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+              <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+              <circle cx="14.7" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
+          <button class="mode-btn" data-mode="color" title="Shade cell" aria-label="Shade cell with color">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3c4 5 6.5 8.2 6.5 11.2A6.5 6.5 0 0 1 5.5 14.2C5.5 11.2 8 8 12 3Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
 
     </aside>
 

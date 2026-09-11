@@ -1,6 +1,20 @@
 (() => {
-  const STORAGE_KEY = "solvers-notebook-state-v1";
+  const STORAGE_KEY = "solvers-notebook-state-v2";
   const { generatePuzzle, computeCandidates, getHint, isBoardComplete, findConflicts, cloneGrid } = window.SudokuEngine;
+
+  // Cell-shading palette for the "color" tool. Soft enough that given/user/
+  // conflict text stays legible on top, but distinct from one another.
+  const CELL_COLORS = [
+    "#E8A5A0", // red
+    "#EFC08B", // orange
+    "#EDDD8E", // yellow
+    "#B7D99B", // green
+    "#9ED4C6", // teal
+    "#9FC3E0", // blue
+    "#B5AEE0", // indigo
+    "#E3AFD1", // pink
+    "#C9C3B6", // stone
+  ];
 
   let state = null; // full game state, see newGame()
   let timerInterval = null;
@@ -13,6 +27,19 @@
   const hintOutput = document.getElementById("hintOutput");
   const winOverlay = document.getElementById("winOverlay");
 
+  function emptyNotes() {
+    return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
+  }
+  function emptyColors() {
+    return Array.from({ length: 9 }, () => Array(9).fill(null));
+  }
+  function cloneNotes(notes) {
+    return notes.map(row => row.map(s => new Set(s)));
+  }
+  function cloneColors(colors) {
+    return colors.map(row => row.slice());
+  }
+
   function newGame(difficulty) {
     const { puzzle, solution } = generatePuzzle(difficulty);
     state = {
@@ -20,9 +47,11 @@
       givens: cloneGrid(puzzle),
       grid: cloneGrid(puzzle),
       solution,
-      notes: Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set())),
+      cornerNotes: emptyNotes(),
+      centerNotes: emptyNotes(),
+      colors: emptyColors(),
       selected: null,
-      notesMode: false,
+      inputMode: "digit", // "digit" | "corner" | "center" | "color"
       mistakes: 0,
       seconds: 0,
       history: [],
@@ -33,6 +62,7 @@
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
     closeSettings();
+    setInputMode("digit");
     startTimer();
     saveState();
     render();
@@ -61,7 +91,9 @@
       givens: state.givens,
       grid: state.grid,
       solution: state.solution,
-      notes: state.notes.map(row => row.map(set => [...set])),
+      cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
+      centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
+      colors: state.colors,
       mistakes: state.mistakes,
       seconds: state.seconds,
       won: state.won,
@@ -79,9 +111,11 @@
         givens: data.givens,
         grid: data.grid,
         solution: data.solution,
-        notes: data.notes.map(row => row.map(arr => new Set(arr))),
+        cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
+        centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
+        colors: data.colors,
         selected: null,
-        notesMode: false,
+        inputMode: "digit",
         mistakes: data.mistakes,
         seconds: data.seconds,
         history: [],
@@ -91,6 +125,7 @@
       difficultyDisplay.textContent = state.difficulty[0].toUpperCase() + state.difficulty.slice(1);
       timerDisplay.textContent = formatTime(state.seconds);
       mistakesDisplay.textContent = `${state.mistakes} ✕`;
+      setInputMode("digit");
       if (!state.won) startTimer();
       return true;
     } catch (e) {
@@ -116,6 +151,11 @@
 
         if (conflicts.has(`${r},${c}`)) cell.classList.add("conflict");
 
+        const shade = state.colors[r][c];
+        if (shade !== null && shade !== undefined) {
+          cell.style.setProperty("--cell-shade", CELL_COLORS[shade]);
+        }
+
         if (state.selected) {
           const [sr, sc] = state.selected;
           if (sr === r && sc === c) cell.classList.add("selected");
@@ -135,15 +175,23 @@
           span.className = "value";
           span.textContent = val;
           cell.appendChild(span);
-        } else if (state.notes[r][c].size > 0) {
-          const notesGrid = document.createElement("div");
-          notesGrid.className = "notes-grid";
-          for (let n = 1; n <= 9; n++) {
-            const span = document.createElement("span");
-            span.textContent = state.notes[r][c].has(n) ? n : "";
-            notesGrid.appendChild(span);
+        } else {
+          if (state.cornerNotes[r][c].size > 0) {
+            const notesGrid = document.createElement("div");
+            notesGrid.className = "notes-grid";
+            for (let n = 1; n <= 9; n++) {
+              const span = document.createElement("span");
+              span.textContent = state.cornerNotes[r][c].has(n) ? n : "";
+              notesGrid.appendChild(span);
+            }
+            cell.appendChild(notesGrid);
           }
-          cell.appendChild(notesGrid);
+          if (state.centerNotes[r][c].size > 0) {
+            const center = document.createElement("div");
+            center.className = "center-notes";
+            center.textContent = [...state.centerNotes[r][c]].sort((a, b) => a - b).join("");
+            cell.appendChild(center);
+          }
         }
 
         cell.addEventListener("click", () => selectCell(r, c));
@@ -156,16 +204,28 @@
 
   function renderNumpad() {
     numpadEl.innerHTML = "";
+    const isColorMode = state.inputMode === "color";
+
     const counts = Array(10).fill(0);
-    for (let r = 0; r < 9; r++)
-      for (let c = 0; c < 9; c++)
-        if (state.grid[r][c] !== 0) counts[state.grid[r][c]]++;
+    if (!isColorMode) {
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+          if (state.grid[r][c] !== 0) counts[state.grid[r][c]]++;
+    }
+
+    const selectedColor = state.selected ? state.colors[state.selected[0]][state.selected[1]] : null;
 
     for (let n = 1; n <= 9; n++) {
       const btn = document.createElement("button");
       btn.className = "num-btn";
-      btn.textContent = n;
-      if (counts[n] >= 9) btn.classList.add("exhausted");
+      if (isColorMode) {
+        btn.classList.add("color-swatch");
+        btn.style.background = CELL_COLORS[n - 1];
+        if (selectedColor === n - 1) btn.classList.add("active-swatch");
+      } else {
+        btn.textContent = n;
+        if (counts[n] >= 9) btn.classList.add("exhausted");
+      }
       btn.addEventListener("click", () => inputNumber(n));
       numpadEl.appendChild(btn);
     }
@@ -180,7 +240,9 @@
   function pushHistory() {
     state.history.push({
       grid: cloneGrid(state.grid),
-      notes: state.notes.map(row => row.map(s => new Set(s))),
+      cornerNotes: cloneNotes(state.cornerNotes),
+      centerNotes: cloneNotes(state.centerNotes),
+      colors: cloneColors(state.colors),
       mistakes: state.mistakes,
     });
     if (state.history.length > 50) state.history.shift();
@@ -189,16 +251,30 @@
   function inputNumber(n) {
     if (!state.selected || state.won) return;
     const [r, c] = state.selected;
+
+    if (state.inputMode === "color") {
+      pushHistory();
+      const colorIndex = n - 1;
+      state.colors[r][c] = state.colors[r][c] === colorIndex ? null : colorIndex;
+      saveState();
+      render();
+      return;
+    }
+
     if (state.givens[r][c] !== 0) return;
 
     pushHistory();
 
-    if (state.notesMode) {
-      if (state.notes[r][c].has(n)) state.notes[r][c].delete(n);
-      else state.notes[r][c].add(n);
+    if (state.inputMode === "corner") {
+      if (state.cornerNotes[r][c].has(n)) state.cornerNotes[r][c].delete(n);
+      else state.cornerNotes[r][c].add(n);
+    } else if (state.inputMode === "center") {
+      if (state.centerNotes[r][c].has(n)) state.centerNotes[r][c].delete(n);
+      else state.centerNotes[r][c].add(n);
     } else {
       state.grid[r][c] = n;
-      state.notes[r][c].clear();
+      state.cornerNotes[r][c].clear();
+      state.centerNotes[r][c].clear();
       if (state.solution[r][c] !== n) {
         state.mistakes++;
       }
@@ -212,13 +288,17 @@
 
   function clearNoteFromPeers(r, c, n) {
     for (let i = 0; i < 9; i++) {
-      state.notes[r][i].delete(n);
-      state.notes[i][c].delete(n);
+      state.cornerNotes[r][i].delete(n);
+      state.cornerNotes[i][c].delete(n);
+      state.centerNotes[r][i].delete(n);
+      state.centerNotes[i][c].delete(n);
     }
     const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
     for (let dr = 0; dr < 3; dr++)
-      for (let dc = 0; dc < 3; dc++)
-        state.notes[br + dr][bc + dc].delete(n);
+      for (let dc = 0; dc < 3; dc++) {
+        state.cornerNotes[br + dr][bc + dc].delete(n);
+        state.centerNotes[br + dr][bc + dc].delete(n);
+      }
   }
 
   function eraseCell() {
@@ -227,7 +307,9 @@
     if (state.givens[r][c] !== 0) return;
     pushHistory();
     state.grid[r][c] = 0;
-    state.notes[r][c].clear();
+    state.cornerNotes[r][c].clear();
+    state.centerNotes[r][c].clear();
+    state.colors[r][c] = null;
     saveState();
     render();
   }
@@ -236,7 +318,9 @@
     const prev = state.history.pop();
     if (!prev) return;
     state.grid = prev.grid;
-    state.notes = prev.notes;
+    state.cornerNotes = prev.cornerNotes;
+    state.centerNotes = prev.centerNotes;
+    state.colors = prev.colors;
     state.mistakes = prev.mistakes;
     saveState();
     render();
@@ -266,6 +350,17 @@
     if (revealLink) revealLink.addEventListener("click", () => showHint("reveal"));
   }
 
+  // ---------------- Input mode (digit / corner notes / center notes / color) ----------------
+  const modeButtons = Array.from(document.querySelectorAll(".mode-btn"));
+  function setInputMode(mode) {
+    state.inputMode = mode;
+    modeButtons.forEach(btn => btn.classList.toggle("active", btn.dataset.mode === mode));
+    renderNumpad();
+  }
+  modeButtons.forEach(btn => {
+    btn.addEventListener("click", () => setInputMode(btn.dataset.mode));
+  });
+
   // ---------------- Wiring ----------------
   const settingsBackdrop = document.getElementById("settingsBackdrop");
   function openSettings() { settingsBackdrop.classList.add("show"); }
@@ -294,12 +389,6 @@
 
   document.getElementById("undoBtn").addEventListener("click", undo);
   document.getElementById("eraseBtn").addEventListener("click", eraseCell);
-
-  const notesBtn = document.getElementById("notesBtn");
-  notesBtn.addEventListener("click", () => {
-    state.notesMode = !state.notesMode;
-    notesBtn.classList.toggle("on", state.notesMode);
-  });
 
   document.getElementById("hintBtn").addEventListener("click", () => showHint("nudge"));
 

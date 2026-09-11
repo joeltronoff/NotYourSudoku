@@ -136,7 +136,7 @@ button {
   font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--grid-line);
   border-bottom: 1px solid var(--grid-line);
-  background: var(--paper);
+  background: var(--cell-shade, var(--paper));
   user-select: none;
   transition: background 120ms ease;
 }
@@ -173,11 +173,21 @@ button {
 .cell.user .value { color: var(--user-entry); }
 .cell.given .value { color: var(--ink); }
 .cell.conflict .value { color: var(--error); }
-.cell.conflict { background: var(--error-soft); }
 
-.cell.selected { background: var(--accent-soft); }
-.cell.peer { background: #F1EEE5; }
-.cell.same-value { background: #EACFC2; }
+/* Interaction states are semi-transparent overlays, not solid fills,
+   so a shaded cell's color still shows through while selected/peered
+   instead of being hidden behind an opaque highlight. */
+.cell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: transparent;
+}
+.cell.peer::before { background: rgba(43, 42, 39, 0.06); }
+.cell.same-value::before { background: rgba(179, 95, 69, 0.3); }
+.cell.selected::before { background: rgba(204, 120, 92, 0.38); }
+.cell.conflict::before { background: rgba(192, 57, 43, 0.24); }
 .cell.hint-target { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
 
 .notes-grid {
@@ -196,14 +206,39 @@ button {
   font-family: var(--sans);
 }
 
-/* ---------- Mobile numpad ---------- */
-.mobile-numpad {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 6px;
-  max-width: 640px;
+.center-notes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(7px, 1.8vmin, 13px);
+  letter-spacing: 0.5px;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Numpad + mode rail ---------- */
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  max-width: 400px;
   margin: 0 auto;
   width: 100%;
+}
+.mobile-numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  flex: 1;
+  /* Kept deliberately small: a 3x3 keypad is much taller than the old
+     single row for the same width, and this panel shares the screen
+     with a board sized independently in viewport units — a generous
+     cap here is exactly what overflows short viewports. */
+  max-width: 130px;
 }
 .num-btn {
   aspect-ratio: 1 / 1;
@@ -217,6 +252,34 @@ button {
 }
 .num-btn:active { background: var(--accent-soft); }
 .num-btn.exhausted { opacity: 0.3; }
+.num-btn.color-swatch { position: relative; }
+.num-btn.color-swatch.active-swatch::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+}
+
+.mode-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  width: 60px;
+}
+.mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-bg);
+  border: none;
+  border-radius: 8px;
+  color: var(--ink);
+}
+.mode-btn:active { background: var(--accent-soft); }
+.mode-btn.active { background: var(--accent); color: #fff; }
 
 /* ---------- Control rail (icons + numpad) ---------- */
 .panel {
@@ -232,6 +295,13 @@ button {
   background: var(--panel-bg);
   padding: 6px;
   border-radius: 14px;
+  /* Buttons are square and width-driven (aspect-ratio below), so an
+     unbounded row grows tall on any screen that's wide but short (a
+     phone in a wide/landscape-ish aspect) — cap it like a phone-width
+     row regardless of how much horizontal space is actually on offer. */
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
 }
 .icon-tool {
   flex: 1;
@@ -418,12 +488,13 @@ button {
     gap: 8px;
   }
   .icon-tool { flex: 1; aspect-ratio: 1 / 1; }
+  .input-row { max-width: 320px; }
   .mobile-numpad {
-    grid-template-columns: repeat(3, 1fr);
-    max-width: 280px;
+    max-width: 230px;
     gap: 8px;
   }
   .num-btn { font-size: clamp(20px, 3vw, 28px); border-radius: 12px; }
+  .mode-btn svg { width: 18px; height: 18px; }
   .popover-backdrop { align-items: center; }
   .popover { max-width: 360px; border-radius: 20px; }
 }
