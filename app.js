@@ -411,17 +411,48 @@
     }
 
     if (hasArrows) {
+      const CIRCLE_R = 4;
+      const HEAD_LEN = 1.8;
+      const HEAD_WIDTH = 1.1;
       state.arrows.forEach(arrow => {
         const [cr, cc] = arrow.circle;
-        const points = [[cr, cc], ...arrow.cells].map(([r, c]) => `${c * 10 + 5},${r * 10 + 5}`).join(" ");
+        const ccx = cc * 10 + 5, ccy = cr * 10 + 5;
+        const cellPoints = arrow.cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5]);
+
+        // Start the line at the circle's edge (toward the first line cell)
+        // rather than its center, so it never overlaps the bulb.
+        const [fx, fy] = cellPoints[0];
+        const dx0 = fx - ccx, dy0 = fy - ccy;
+        const d0 = Math.hypot(dx0, dy0) || 1;
+        const start = [ccx + (dx0 / d0) * CIRCLE_R, ccy + (dy0 / d0) * CIRCLE_R];
+
+        const points = [start, ...cellPoints];
         const poly = document.createElementNS(svgNS, "polyline");
-        poly.setAttribute("points", points);
+        poly.setAttribute("points", points.map(p => p.join(",")).join(" "));
         poly.setAttribute("class", "line-path arrow-line");
         svg.appendChild(poly);
+
+        // Arrowhead at the tip, oriented along the line's final segment.
+        const [lx, ly] = cellPoints[cellPoints.length - 1];
+        const [px, py] = cellPoints.length > 1 ? cellPoints[cellPoints.length - 2] : start;
+        const adx = lx - px, ady = ly - py;
+        const alen = Math.hypot(adx, ady) || 1;
+        const aux = adx / alen, auy = ady / alen;
+        const perpX = -auy, perpY = aux;
+        const backX = lx - aux * HEAD_LEN, backY = ly - auy * HEAD_LEN;
+        const head = document.createElementNS(svgNS, "polyline");
+        head.setAttribute("points", [
+          [backX + perpX * HEAD_WIDTH, backY + perpY * HEAD_WIDTH],
+          [lx, ly],
+          [backX - perpX * HEAD_WIDTH, backY - perpY * HEAD_WIDTH],
+        ].map(p => p.join(",")).join(" "));
+        head.setAttribute("class", "arrow-head");
+        svg.appendChild(head);
+
         const circle = document.createElementNS(svgNS, "circle");
-        circle.setAttribute("cx", cc * 10 + 5);
-        circle.setAttribute("cy", cr * 10 + 5);
-        circle.setAttribute("r", 2.8);
+        circle.setAttribute("cx", ccx);
+        circle.setAttribute("cy", ccy);
+        circle.setAttribute("r", CIRCLE_R);
         circle.setAttribute("class", "arrow-circle");
         svg.appendChild(circle);
       });
