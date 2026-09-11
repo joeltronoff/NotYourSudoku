@@ -16,6 +16,11 @@
     return new Set([...classic, ...variant]);
   }
 
+  function isKnightMove(r1, c1, r2, c2) {
+    const dr = Math.abs(r1 - r2), dc = Math.abs(c1 - c2);
+    return (dr === 1 && dc === 2) || (dr === 2 && dc === 1);
+  }
+
   // Cell-shading palette for the "color" tool. Soft enough that given/user/
   // conflict text stays legible on top, but distinct from one another.
   const CELL_COLORS = [
@@ -251,6 +256,7 @@
             cell.classList.add("selected");
           } else if (state.selected.some(([sr, sc]) =>
             sr === r || sc === c || (Math.floor(sr / 3) === Math.floor(r / 3) && Math.floor(sc / 3) === Math.floor(c / 3))
+            || (state.antiKnight && isKnightMove(sr, sc, r, c))
           )) {
             cell.classList.add("peer");
           }
