@@ -162,8 +162,12 @@ button {
 
 .cell .value {
   font-size: clamp(16px, 4.2vmin, 30px);
-  font-size: 100cqh;
+  font-size: 86cqh;
   line-height: 1;
+  /* Numerals have no descenders, so the font's line-box leading sits
+     unevenly around the glyph and the digit optically lands a little
+     above center; nudge it down to compensate. */
+  transform: translateY(4.4%);
   color: var(--given);
 }
 .cell.user .value { color: var(--user-entry); font-weight: 600; }
