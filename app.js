@@ -327,19 +327,30 @@
       state.cages.forEach((cage, idx) => {
         cage.cells.forEach(([r, c]) => cageOf.set(`${r},${c}`, idx));
       });
+      const LABEL_GAP_W = 3.4;
+      const LABEL_GAP_H = 2.6;
       state.cages.forEach((cage, idx) => {
         const sameCage = (r, c) => cageOf.get(`${r},${c}`) === idx;
-        cage.cells.forEach(([r, c]) => {
-          const x0 = c * 10, y0 = r * 10, x1 = x0 + 10, y1 = y0 + 10;
-          if (r === 0 || !sameCage(r - 1, c)) addLine(x0 + INSET, y0 + INSET, x1 - INSET, y0 + INSET);
-          if (r === 8 || !sameCage(r + 1, c)) addLine(x0 + INSET, y1 - INSET, x1 - INSET, y1 - INSET);
-          if (c === 0 || !sameCage(r, c - 1)) addLine(x0 + INSET, y0 + INSET, x0 + INSET, y1 - INSET);
-          if (c === 8 || !sameCage(r, c + 1)) addLine(x1 - INSET, y0 + INSET, x1 - INSET, y1 - INSET);
-        });
         let [tr, tc] = cage.cells[0];
         for (const [r, c] of cage.cells) {
           if (r < tr || (r === tr && c < tc)) { tr = r; tc = c; }
         }
+        cage.cells.forEach(([r, c]) => {
+          const x0 = c * 10, y0 = r * 10, x1 = x0 + 10, y1 = y0 + 10;
+          const isLabelCell = r === tr && c === tc;
+          // Leave a gap in the top/left edges of the label cell so the
+          // dashed outline doesn't run straight through the sum digits.
+          if (r === 0 || !sameCage(r - 1, c)) {
+            const startX = isLabelCell ? Math.min(x0 + INSET + LABEL_GAP_W, x1 - INSET) : x0 + INSET;
+            addLine(startX, y0 + INSET, x1 - INSET, y0 + INSET);
+          }
+          if (r === 8 || !sameCage(r + 1, c)) addLine(x0 + INSET, y1 - INSET, x1 - INSET, y1 - INSET);
+          if (c === 0 || !sameCage(r, c - 1)) {
+            const startY = isLabelCell ? Math.min(y0 + INSET + LABEL_GAP_H, y1 - INSET) : y0 + INSET;
+            addLine(x0 + INSET, startY, x0 + INSET, y1 - INSET);
+          }
+          if (c === 8 || !sameCage(r, c + 1)) addLine(x1 - INSET, y0 + INSET, x1 - INSET, y1 - INSET);
+        });
         const text = document.createElementNS(svgNS, "text");
         text.setAttribute("x", tc * 10 + INSET + 0.35);
         text.setAttribute("y", tr * 10 + INSET + 1.9);
