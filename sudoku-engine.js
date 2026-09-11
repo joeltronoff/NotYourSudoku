@@ -479,6 +479,73 @@ function findVariantConflicts(grid, constraints) {
     }
   }
 
+  if (constraints.antiKnight) {
+    const KNIGHT_OFFSETS = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        for (const [dr, dc] of KNIGHT_OFFSETS) {
+          const rr = r + dr, cc = c + dc;
+          if (rr < 0 || rr > 8 || cc < 0 || cc > 8) continue;
+          if (grid[rr][cc] === v) {
+            conflicts.add(`${r},${c}`);
+            conflicts.add(`${rr},${cc}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.sandwich) {
+    const sandwichSum = (cells) => {
+      const idx1 = cells.findIndex(([r, c]) => grid[r][c] === 1);
+      const idx9 = cells.findIndex(([r, c]) => grid[r][c] === 9);
+      if (idx1 === -1 || idx9 === -1) return null;
+      const lo = Math.min(idx1, idx9), hi = Math.max(idx1, idx9);
+      const between = cells.slice(lo + 1, hi);
+      const filled = between.filter(([r, c]) => grid[r][c] !== 0);
+      const sum = filled.reduce((s, [r, c]) => s + grid[r][c], 0);
+      const allFilled = filled.length === between.length;
+      return { between, sum, allFilled };
+    };
+    const checkLine = (cells, clue) => {
+      if (clue == null) return;
+      const result = sandwichSum(cells);
+      if (!result) return;
+      const { between, sum, allFilled } = result;
+      const over = sum > clue;
+      const wrongTotal = allFilled && sum !== clue;
+      if (over || wrongTotal) {
+        for (const [r, c] of between) {
+          if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+        }
+      }
+    };
+    const rowsClues = constraints.sandwich.rows || [];
+    for (let r = 0; r < 9; r++) {
+      checkLine(Array.from({ length: 9 }, (_, c) => [r, c]), rowsClues[r]);
+    }
+    const colsClues = constraints.sandwich.cols || [];
+    for (let c = 0; c < 9; c++) {
+      checkLine(Array.from({ length: 9 }, (_, r) => [r, c]), colsClues[c]);
+    }
+  }
+
+  if (constraints.xv) {
+    for (const pair of constraints.xv) {
+      const [ar, ac] = pair.a;
+      const [br, bc] = pair.b;
+      const av = grid[ar][ac], bv = grid[br][bc];
+      if (av === 0 || bv === 0) continue;
+      const target = pair.kind === "X" ? 10 : 5;
+      if (av + bv !== target) {
+        conflicts.add(`${ar},${ac}`);
+        conflicts.add(`${br},${bc}`);
+      }
+    }
+  }
+
   return conflicts;
 }
 

@@ -99,6 +99,59 @@
   const linesGivens = SOLUTION.map(row => row.slice());
   for (const [r, c] of linesHoles) linesGivens[r][c] = 0;
 
+  // Anti-knight sudoku needs its own solution grid — the shared SOLUTION
+  // above happens to place the same digit a knight's-move apart in a few
+  // spots (e.g. the two 9s at (0,6) and (1,4)), so it can't be reused
+  // here. This grid is a cyclic band-shift (row r = shift the digits
+  // 1-9 by 3*floor(r/3)+r), which is simultaneously a valid classic
+  // sudoku solution and knight-move-safe everywhere on the board.
+  const ANTIKNIGHT_SOLUTION = [];
+  for (let r = 0; r < 9; r++) {
+    const row = [];
+    for (let c = 0; c < 9; c++) row.push(((r * 3 + Math.floor(r / 3) + c) % 9) + 1);
+    ANTIKNIGHT_SOLUTION.push(row);
+  }
+  const antiKnightGivens = ANTIKNIGHT_SOLUTION.map((row, r) =>
+    row.map((v, c) => ((r + c) % 2 === 0 ? v : 0))
+  );
+
+  // Sandwich sudoku: each clue is the sum of the digits strictly between
+  // the 1 and the 9 in that row/column. Clue values below were computed
+  // directly from the shared SOLUTION grid; only a subset of rows/cols
+  // carry a clue (the rest are left ambiguous, same as a real puzzle
+  // that doesn't clue every line).
+  const sandwichHoles = [
+    [0, 6], [0, 7], [3, 3], [3, 4], [5, 2], [6, 1], [8, 7],
+    [2, 1], [5, 1], [1, 3], [5, 3], [8, 6], [3, 6], [6, 6], [4, 8], [6, 8],
+  ];
+  const sandwichGivens = SOLUTION.map(row => row.slice());
+  for (const [r, c] of sandwichHoles) sandwichGivens[r][c] = 0;
+
+  // XV sudoku: an "X" between two adjacent cells means they sum to 10, a
+  // "V" means they sum to 5. Absence of a marker means no information
+  // (same convention as kropki dots). Pairs verified against SOLUTION.
+  const xvPairs = [
+    { a: [0, 2], b: [0, 3], kind: "X" },
+    { a: [0, 6], b: [0, 7], kind: "X" },
+    { a: [1, 3], b: [1, 4], kind: "X" },
+    { a: [3, 5], b: [3, 6], kind: "V" },
+    { a: [3, 7], b: [3, 8], kind: "V" },
+    { a: [4, 5], b: [4, 6], kind: "X" },
+    { a: [4, 7], b: [4, 8], kind: "X" },
+    { a: [6, 4], b: [6, 5], kind: "X" },
+    { a: [6, 6], b: [6, 7], kind: "X" },
+    { a: [7, 0], b: [7, 1], kind: "X" },
+    { a: [7, 3], b: [7, 4], kind: "V" },
+    { a: [7, 0], b: [8, 0], kind: "V" },
+    { a: [2, 4], b: [3, 4], kind: "X" },
+    { a: [5, 4], b: [6, 4], kind: "V" },
+  ];
+  const xvHoles = new Set();
+  xvPairs.forEach(p => { xvHoles.add(p.a.join(",")); xvHoles.add(p.b.join(",")); });
+  const xvGivens = SOLUTION.map((row, r) =>
+    row.map((v, c) => (xvHoles.has(`${r},${c}`) ? 0 : v))
+  );
+
   window.PuzzleLibrary = [
     {
       id: "killer-sample-1",
@@ -133,6 +186,36 @@
       arrows: [
         { circle: [8, 8], cells: [[7, 8], [6, 8]] },
       ],
+    },
+    {
+      id: "antiknight-sample-1",
+      title: "Anti-Knight Sample",
+      variant: "antiknight",
+      blurb: "Ordinary sudoku rules, plus: no two cells a knight's-move apart may share a digit.",
+      givens: antiKnightGivens,
+      solution: ANTIKNIGHT_SOLUTION.map(row => row.slice()),
+      antiKnight: true,
+    },
+    {
+      id: "sandwich-sample-1",
+      title: "Sandwich Sample",
+      variant: "sandwich",
+      blurb: "Clues outside the grid give the sum of the digits sandwiched between the 1 and the 9 in that row/column.",
+      givens: sandwichGivens,
+      solution: SOLUTION.map(row => row.slice()),
+      sandwich: {
+        rows: [0, null, null, 13, null, 3, 6, null, 7],
+        cols: [null, 7, null, 18, null, null, 35, null, 15],
+      },
+    },
+    {
+      id: "xv-sample-1",
+      title: "XV Sample",
+      variant: "xv",
+      blurb: "An X between two cells means they sum to 10, a V means they sum to 5. No marker means no information.",
+      givens: xvGivens,
+      solution: SOLUTION.map(row => row.slice()),
+      xv: xvPairs,
     },
   ];
 })();

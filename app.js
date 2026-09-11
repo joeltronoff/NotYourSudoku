@@ -9,6 +9,9 @@
       kropki: state.kropki,
       lines: state.lines,
       arrows: state.arrows,
+      antiKnight: state.antiKnight,
+      sandwich: state.sandwich,
+      xv: state.xv,
     });
     return new Set([...classic, ...variant]);
   }
@@ -64,6 +67,9 @@
       kropki: [],
       lines: [],
       arrows: [],
+      antiKnight: false,
+      sandwich: null,
+      xv: [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -84,6 +90,7 @@
     saveState();
     render();
     renderConstraintOverlays();
+    renderSandwichClues();
     updateHintAvailability();
   }
 
@@ -101,6 +108,9 @@
       kropki: entry.kropki || [],
       lines: entry.lines || [],
       arrows: entry.arrows || [],
+      antiKnight: entry.antiKnight || false,
+      sandwich: entry.sandwich || null,
+      xv: entry.xv || [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -121,6 +131,7 @@
     saveState();
     render();
     renderConstraintOverlays();
+    renderSandwichClues();
     updateHintAvailability();
   }
 
@@ -153,6 +164,9 @@
       kropki: state.kropki,
       lines: state.lines,
       arrows: state.arrows,
+      antiKnight: state.antiKnight,
+      sandwich: state.sandwich,
+      xv: state.xv,
       cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
       centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
       colors: state.colors,
@@ -179,6 +193,9 @@
         kropki: data.kropki || [],
         lines: data.lines || [],
         arrows: data.arrows || [],
+        antiKnight: data.antiKnight || false,
+        sandwich: data.sandwich || null,
+        xv: data.xv || [],
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
@@ -326,7 +343,8 @@
     computeCellDecorations();
     const hasCages = state.cages && state.cages.length > 0;
     const hasKropki = state.kropki && state.kropki.length > 0;
-    if (!hasCages && !hasKropki) return;
+    const hasXV = state.xv && state.xv.length > 0;
+    if (!hasCages && !hasKropki && !hasXV) return;
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -396,7 +414,55 @@
       });
     }
 
+    if (hasXV) {
+      state.xv.forEach(pair => {
+        const [r1, c1] = pair.a, [r2, c2] = pair.b;
+        const cx = r1 === r2 ? Math.max(c1, c2) * 10 : c1 * 10 + 5;
+        const cy = r1 === r2 ? r1 * 10 + 5 : Math.max(r1, r2) * 10;
+        const bg = document.createElementNS(svgNS, "circle");
+        bg.setAttribute("cx", cx);
+        bg.setAttribute("cy", cy);
+        bg.setAttribute("r", 1.6);
+        bg.setAttribute("class", "xv-bg");
+        svg.appendChild(bg);
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", cx);
+        text.setAttribute("y", cy);
+        text.setAttribute("class", "xv-label");
+        text.textContent = pair.kind;
+        svg.appendChild(text);
+      });
+    }
+
     constraintOverlayEl.appendChild(svg);
+  }
+
+  // Sandwich clues sit outside the board (row clues to the left, column
+  // clues above), so they get their own thin grid wrapper rather than
+  // living in the SVG overlay that sits on top of the board.
+  const sandwichWrapEl = document.getElementById("sandwichWrap");
+  const sandwichColCluesEl = document.getElementById("sandwichColClues");
+  const sandwichRowCluesEl = document.getElementById("sandwichRowClues");
+  function renderSandwichClues() {
+    sandwichColCluesEl.innerHTML = "";
+    sandwichRowCluesEl.innerHTML = "";
+    const hasSandwich = !!state.sandwich;
+    sandwichWrapEl.classList.toggle("has-clues", hasSandwich);
+    if (!hasSandwich) return;
+    const rows = state.sandwich.rows || [];
+    const cols = state.sandwich.cols || [];
+    for (let r = 0; r < 9; r++) {
+      const cell = document.createElement("div");
+      cell.className = "sandwich-clue";
+      cell.textContent = rows[r] == null ? "" : rows[r];
+      sandwichRowCluesEl.appendChild(cell);
+    }
+    for (let c = 0; c < 9; c++) {
+      const cell = document.createElement("div");
+      cell.className = "sandwich-clue";
+      cell.textContent = cols[c] == null ? "" : cols[c];
+      sandwichColCluesEl.appendChild(cell);
+    }
   }
 
   // Lines/arrows are drawn per-cell (inside each cell's own DOM node,
@@ -647,7 +713,10 @@
     return (state.cages && state.cages.length > 0)
       || (state.kropki && state.kropki.length > 0)
       || (state.lines && state.lines.length > 0)
-      || (state.arrows && state.arrows.length > 0);
+      || (state.arrows && state.arrows.length > 0)
+      || !!state.antiKnight
+      || !!state.sandwich
+      || (state.xv && state.xv.length > 0);
   }
 
   function updateHintAvailability() {
@@ -800,6 +869,7 @@
     document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.diff === state.difficulty));
     render();
     renderConstraintOverlays();
+    renderSandwichClues();
     updateHintAvailability();
   }
 })();

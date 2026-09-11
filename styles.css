@@ -106,6 +106,12 @@ button {
   justify-content: center;
   align-items: center;
   min-height: 0;
+  /* Establishes a query container so .board can size itself off this
+     element's own (definite) inline size even when nested inside the
+     fit-content .sandwich-wrap — a plain "%" there would create a
+     circular dependency (fit-content parent sized by a percentage
+     child) and collapse the board to near-zero. */
+  container-type: inline-size;
 }
 
 .board {
@@ -116,6 +122,59 @@ button {
   border: 4px solid var(--grid-line-strong);
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* Sandwich sudoku row/column clues live outside the board itself, so
+   the board sits in a small grid wrapper with a thin clue strip above
+   and to the left. When no sandwich puzzle is loaded the strips
+   collapse to 0 and the wrapper hugs the board exactly as before. */
+.sandwich-wrap {
+  display: grid;
+  grid-template-columns: 0px 1fr;
+  grid-template-rows: 0px 1fr;
+  width: fit-content;
+  height: fit-content;
+  max-width: 100%;
+  max-height: 100%;
+}
+.sandwich-wrap.has-clues {
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: 24px 1fr;
+  gap: 4px;
+}
+.sandwich-corner { grid-column: 1; grid-row: 1; }
+.sandwich-col-clues {
+  grid-column: 2;
+  grid-row: 1;
+  display: none;
+  grid-template-columns: repeat(9, 1fr);
+  align-items: end;
+  justify-items: center;
+  padding-bottom: 2px;
+}
+.sandwich-row-clues {
+  grid-column: 1;
+  grid-row: 2;
+  display: none;
+  grid-template-rows: repeat(9, 1fr);
+  align-items: center;
+  justify-items: end;
+  padding-right: 3px;
+}
+.sandwich-wrap.has-clues .sandwich-col-clues,
+.sandwich-wrap.has-clues .sandwich-row-clues {
+  display: grid;
+}
+.sandwich-wrap .board {
+  grid-column: 2;
+  grid-row: 2;
+}
+.sandwich-clue {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
 }
 
 .board-grid {
@@ -153,6 +212,15 @@ button {
 .kropki-dot { stroke-width: 0.35; }
 .kropki-dot.kropki-white { fill: var(--paper); stroke: var(--ink); }
 .kropki-dot.kropki-black { fill: var(--ink); stroke: var(--ink); }
+.xv-bg { fill: var(--paper); }
+.xv-label {
+  font-size: 2.6px;
+  font-family: var(--sans);
+  font-weight: 700;
+  fill: var(--ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
 
 /* Thermo/whispers/renban/palindrome/arrow decorations are drawn per-cell
    (see computeCellDecorations in app.js), each as a small SVG sized to
@@ -542,7 +610,7 @@ button {
     align-items: stretch;
   }
   .puzzle-col { flex: 1.6; }
-  .board { width: min(100%, 92dvh, 760px); }
+  .board { width: min(100cqw, 92dvh, 760px); }
 
   .panel {
     flex: 1;
