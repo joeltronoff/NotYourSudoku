@@ -62,8 +62,8 @@ button {
   border-radius: 20px;
 }
 .timer {
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
@@ -296,9 +296,6 @@ button {
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  background: var(--panel-bg);
-  padding: 6px;
-  border-radius: 14px;
   /* Buttons are square and width-driven (aspect-ratio below), so an
      unbounded row grows tall on any screen that's wide but short (a
      phone in a wide/landscape-ish aspect) — cap it like a phone-width
@@ -313,12 +310,12 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: var(--panel-bg);
   border: none;
   border-radius: 10px;
   color: var(--ink);
 }
-.icon-tool:active { background: var(--paper); }
+.icon-tool:active { background: var(--accent-soft); }
 .icon-tool.on { background: var(--accent); color: #fff; }
 
 .hint-output {
@@ -484,14 +481,6 @@ button {
     justify-content: center;
     gap: 20px;
   }
-  .icon-row {
-    flex-direction: column;
-    align-items: center;
-    height: clamp(180px, 38dvh, 300px);
-    padding: 8px 0;
-    gap: 8px;
-  }
-  .icon-tool { flex: 1; aspect-ratio: 1 / 1; }
   .input-row { max-width: 320px; }
   .mobile-numpad {
     max-width: 230px;

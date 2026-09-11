@@ -5,15 +5,15 @@
   // Cell-shading palette for the "color" tool. Soft enough that given/user/
   // conflict text stays legible on top, but distinct from one another.
   const CELL_COLORS = [
-    "#E8A5A0", // red
-    "#EFC08B", // orange
-    "#EDDD8E", // yellow
-    "#B7D99B", // green
-    "#9ED4C6", // teal
-    "#9FC3E0", // blue
-    "#B5AEE0", // indigo
-    "#E3AFD1", // pink
-    "#C9C3B6", // stone
+    "#E15D50", // red
+    "#E8922E", // orange
+    "#E8C93A", // yellow
+    "#7CBA4E", // green
+    "#3FAF95", // teal
+    "#4A8FCB", // blue
+    "#7B6FC4", // indigo
+    "#D162A4", // pink
+    "#9C8F72", // stone
   ];
 
   let state = null; // full game state, see newGame()
