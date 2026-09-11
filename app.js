@@ -22,7 +22,6 @@
   const boardEl = document.getElementById("boardGrid");
   const numpadEl = document.getElementById("mobileNumpad");
   const timerDisplay = document.getElementById("timerDisplay");
-  const mistakesDisplay = document.getElementById("mistakesDisplay");
   const difficultyDisplay = document.getElementById("difficultyDisplay");
   const hintOutput = document.getElementById("hintOutput");
   const winOverlay = document.getElementById("winOverlay");
@@ -50,7 +49,7 @@
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
-      selected: null,
+      selected: [],
       inputMode: "digit", // "digit" | "corner" | "center" | "color"
       mistakes: 0,
       seconds: 0,
@@ -114,7 +113,7 @@
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
-        selected: null,
+        selected: [],
         inputMode: "digit",
         mistakes: data.mistakes,
         seconds: data.seconds,
@@ -124,7 +123,6 @@
       };
       difficultyDisplay.textContent = state.difficulty[0].toUpperCase() + state.difficulty.slice(1);
       timerDisplay.textContent = formatTime(state.seconds);
-      mistakesDisplay.textContent = `${state.mistakes} ✕`;
       setInputMode("digit");
       if (!state.won) startTimer();
       return true;
@@ -156,14 +154,18 @@
           cell.style.setProperty("--cell-shade", CELL_COLORS[shade]);
         }
 
-        if (state.selected) {
-          const [sr, sc] = state.selected;
-          if (sr === r && sc === c) cell.classList.add("selected");
-          else if (sr === r || sc === c || (Math.floor(sr / 3) === Math.floor(r / 3) && Math.floor(sc / 3) === Math.floor(c / 3))) {
+        if (state.selected.length > 0) {
+          const isSelected = state.selected.some(([sr, sc]) => sr === r && sc === c);
+          if (isSelected) {
+            cell.classList.add("selected");
+          } else if (state.selected.some(([sr, sc]) =>
+            sr === r || sc === c || (Math.floor(sr / 3) === Math.floor(r / 3) && Math.floor(sc / 3) === Math.floor(c / 3))
+          )) {
             cell.classList.add("peer");
           }
-          const selVal = state.grid[sr][sc];
-          if (selVal !== 0 && selVal === val) cell.classList.add("same-value");
+          const [lr, lc] = state.selected[state.selected.length - 1];
+          const anchorVal = state.grid[lr][lc];
+          if (!isSelected && anchorVal !== 0 && anchorVal === val) cell.classList.add("same-value");
         }
 
         if (state.hintCell && state.hintCell[0] === r && state.hintCell[1] === c) {
@@ -194,12 +196,10 @@
           }
         }
 
-        cell.addEventListener("click", () => selectCell(r, c));
         boardEl.appendChild(cell);
       }
     }
     renderNumpad();
-    mistakesDisplay.textContent = `${state.mistakes} ✕`;
   }
 
   function renderNumpad() {
@@ -213,7 +213,11 @@
           if (state.grid[r][c] !== 0) counts[state.grid[r][c]]++;
     }
 
-    const selectedColor = state.selected ? state.colors[state.selected[0]][state.selected[1]] : null;
+    let selectedColor = null;
+    if (state.selected.length > 0) {
+      const colorsInSelection = state.selected.map(([r, c]) => state.colors[r][c]);
+      if (colorsInSelection.every(v => v === colorsInSelection[0])) selectedColor = colorsInSelection[0];
+    }
 
     for (let n = 1; n <= 9; n++) {
       const btn = document.createElement("button");
@@ -232,8 +236,14 @@
   }
 
   function selectCell(r, c) {
-    state.selected = [r, c];
+    state.selected = [[r, c]];
     hintOutput.classList.remove("show");
+    render();
+  }
+
+  function extendSelection(r, c) {
+    if (state.selected.some(([sr, sc]) => sr === r && sc === c)) return;
+    state.selected.push([r, c]);
     render();
   }
 
@@ -249,37 +259,47 @@
   }
 
   function inputNumber(n) {
-    if (!state.selected || state.won) return;
-    const [r, c] = state.selected;
+    if (state.selected.length === 0 || state.won) return;
 
     if (state.inputMode === "color") {
       pushHistory();
       const colorIndex = n - 1;
-      state.colors[r][c] = state.colors[r][c] === colorIndex ? null : colorIndex;
+      // If every selected cell already has this color, toggle it off everywhere;
+      // otherwise set it on every selected cell.
+      const allHaveColor = state.selected.every(([r, c]) => state.colors[r][c] === colorIndex);
+      state.selected.forEach(([r, c]) => {
+        state.colors[r][c] = allHaveColor ? null : colorIndex;
+      });
       saveState();
       render();
       return;
     }
 
-    if (state.givens[r][c] !== 0) return;
+    const editable = state.selected.filter(([r, c]) => state.givens[r][c] === 0);
+    if (editable.length === 0) return;
 
     pushHistory();
 
-    if (state.inputMode === "corner") {
-      if (state.cornerNotes[r][c].has(n)) state.cornerNotes[r][c].delete(n);
-      else state.cornerNotes[r][c].add(n);
-    } else if (state.inputMode === "center") {
-      if (state.centerNotes[r][c].has(n)) state.centerNotes[r][c].delete(n);
-      else state.centerNotes[r][c].add(n);
+    if (state.inputMode === "corner" || state.inputMode === "center") {
+      const notes = state.inputMode === "corner" ? state.cornerNotes : state.centerNotes;
+      // Same smart-toggle as color: fill in whichever cells are missing the
+      // candidate, unless every editable cell already has it, then clear it.
+      const allHaveNote = editable.every(([r, c]) => notes[r][c].has(n));
+      editable.forEach(([r, c]) => {
+        if (allHaveNote) notes[r][c].delete(n);
+        else notes[r][c].add(n);
+      });
     } else {
-      state.grid[r][c] = n;
-      state.cornerNotes[r][c].clear();
-      state.centerNotes[r][c].clear();
-      if (state.solution[r][c] !== n) {
-        state.mistakes++;
-      }
-      // clear this number from notes of peers for convenience
-      clearNoteFromPeers(r, c, n);
+      editable.forEach(([r, c]) => {
+        state.grid[r][c] = n;
+        state.cornerNotes[r][c].clear();
+        state.centerNotes[r][c].clear();
+        if (state.solution[r][c] !== n) {
+          state.mistakes++;
+        }
+        // clear this number from notes of peers for convenience
+        clearNoteFromPeers(r, c, n);
+      });
     }
     saveState();
     render();
@@ -302,14 +322,16 @@
   }
 
   function eraseCell() {
-    if (!state.selected) return;
-    const [r, c] = state.selected;
-    if (state.givens[r][c] !== 0) return;
+    if (state.selected.length === 0) return;
     pushHistory();
-    state.grid[r][c] = 0;
-    state.cornerNotes[r][c].clear();
-    state.centerNotes[r][c].clear();
-    state.colors[r][c] = null;
+    state.selected.forEach(([r, c]) => {
+      if (state.givens[r][c] === 0) {
+        state.grid[r][c] = 0;
+        state.cornerNotes[r][c].clear();
+        state.centerNotes[r][c].clear();
+      }
+      state.colors[r][c] = null;
+    });
     saveState();
     render();
   }
@@ -403,8 +425,8 @@
 
   // Physical keyboard support (useful with a Fold's larger screen / attached keyboard)
   document.addEventListener("keydown", (e) => {
-    if (!state.selected) return;
-    const [r, c] = state.selected;
+    if (state.selected.length === 0) return;
+    const [r, c] = state.selected[state.selected.length - 1];
     if (e.key >= "1" && e.key <= "9") inputNumber(parseInt(e.key, 10));
     else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") eraseCell();
     else if (e.key === "ArrowUp") selectCell(Math.max(0, r - 1), c);
@@ -412,6 +434,27 @@
     else if (e.key === "ArrowLeft") selectCell(r, Math.max(0, c - 1));
     else if (e.key === "ArrowRight") selectCell(r, Math.min(8, c + 1));
   });
+
+  // Drag-select: press on a cell to start, drag across others to add them to
+  // the selection. Uses pointermove + elementFromPoint (rather than per-cell
+  // pointerenter) so it keeps working even though render() replaces every
+  // cell element on each extension of the selection.
+  let isDragSelecting = false;
+  boardEl.addEventListener("pointerdown", (e) => {
+    const cellEl = e.target.closest(".cell");
+    if (!cellEl) return;
+    isDragSelecting = true;
+    selectCell(parseInt(cellEl.dataset.r, 10), parseInt(cellEl.dataset.c, 10));
+  });
+  boardEl.addEventListener("pointermove", (e) => {
+    if (!isDragSelecting) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cellEl = el && el.closest(".cell");
+    if (!cellEl) return;
+    extendSelection(parseInt(cellEl.dataset.r, 10), parseInt(cellEl.dataset.c, 10));
+  });
+  document.addEventListener("pointerup", () => { isDragSelecting = false; });
+  document.addEventListener("pointercancel", () => { isDragSelecting = false; });
 
   // ---------------- Install prompt (PWA) ----------------
   let deferredInstallPrompt = null;
