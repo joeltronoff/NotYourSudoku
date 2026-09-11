@@ -347,6 +347,208 @@ function findConflicts(grid) {
   return conflicts;
 }
 
+// ------------------------------------------------------------
+// Variant constraints (killer cages, kropki dots). Classic row/col/box
+// rules are unaffected by these — findConflicts still applies on top.
+// ------------------------------------------------------------
+function findVariantConflicts(grid, constraints) {
+  const conflicts = new Set();
+  if (!constraints) return conflicts;
+
+  if (constraints.cages) {
+    for (const cage of constraints.cages) {
+      const seen = new Set();
+      let sum = 0;
+      let filledCount = 0;
+      for (const [r, c] of cage.cells) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        filledCount++;
+        sum += v;
+        if (seen.has(v)) {
+          // duplicate digit within one cage — every cell holding that
+          // digit in this cage is in conflict
+          for (const [rr, cc] of cage.cells) {
+            if (grid[rr][cc] === v) conflicts.add(`${rr},${cc}`);
+          }
+        }
+        seen.add(v);
+      }
+      if (cage.sum != null) {
+        const over = sum > cage.sum;
+        const wrongTotal = filledCount === cage.cells.length && sum !== cage.sum;
+        if (over || wrongTotal) {
+          for (const [r, c] of cage.cells) {
+            if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.kropki) {
+    for (const dot of constraints.kropki) {
+      const [ar, ac] = dot.a;
+      const [br, bc] = dot.b;
+      const av = grid[ar][ac];
+      const bv = grid[br][bc];
+      if (av === 0 || bv === 0) continue;
+      const isConsecutive = Math.abs(av - bv) === 1;
+      const isDouble = av === bv * 2 || bv === av * 2;
+      const ok = dot.kind === "white" ? isConsecutive : isDouble;
+      if (!ok) {
+        conflicts.add(`${ar},${ac}`);
+        conflicts.add(`${br},${bc}`);
+      }
+    }
+  }
+
+  if (constraints.lines) {
+    for (const line of constraints.lines) {
+      const cells = line.cells;
+      if (line.kind === "thermo") {
+        for (let i = 1; i < cells.length; i++) {
+          const [r1, c1] = cells[i - 1], [r2, c2] = cells[i];
+          const v1 = grid[r1][c1], v2 = grid[r2][c2];
+          if (v1 !== 0 && v2 !== 0 && v1 >= v2) {
+            conflicts.add(`${r1},${c1}`);
+            conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "whispers") {
+        for (let i = 1; i < cells.length; i++) {
+          const [r1, c1] = cells[i - 1], [r2, c2] = cells[i];
+          const v1 = grid[r1][c1], v2 = grid[r2][c2];
+          if (v1 !== 0 && v2 !== 0 && Math.abs(v1 - v2) < 5) {
+            conflicts.add(`${r1},${c1}`);
+            conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "palindrome") {
+        for (let i = 0; i < Math.floor(cells.length / 2); i++) {
+          const [r1, c1] = cells[i], [r2, c2] = cells[cells.length - 1 - i];
+          const v1 = grid[r1][c1], v2 = grid[r2][c2];
+          if (v1 !== 0 && v2 !== 0 && v1 !== v2) {
+            conflicts.add(`${r1},${c1}`);
+            conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "renban") {
+        const filled = cells.filter(([r, c]) => grid[r][c] !== 0);
+        const seen = new Set();
+        for (const [r, c] of filled) {
+          const v = grid[r][c];
+          if (seen.has(v)) {
+            for (const [rr, cc] of cells) {
+              if (grid[rr][cc] === v) conflicts.add(`${rr},${cc}`);
+            }
+          }
+          seen.add(v);
+        }
+        if (filled.length === cells.length) {
+          const values = filled.map(([r, c]) => grid[r][c]);
+          const span = Math.max(...values) - Math.min(...values);
+          if (span !== cells.length - 1) {
+            for (const [r, c] of cells) conflicts.add(`${r},${c}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.arrows) {
+    for (const arrow of constraints.arrows) {
+      const [cr, cc] = arrow.circle;
+      const circleVal = grid[cr][cc];
+      if (circleVal === 0) continue;
+      let sum = 0;
+      let allFilled = true;
+      for (const [r, c] of arrow.cells) {
+        const v = grid[r][c];
+        if (v === 0) { allFilled = false; continue; }
+        sum += v;
+      }
+      const over = sum > circleVal;
+      const wrongTotal = allFilled && sum !== circleVal;
+      if (over || wrongTotal) {
+        conflicts.add(`${cr},${cc}`);
+        for (const [r, c] of arrow.cells) {
+          if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+        }
+      }
+    }
+  }
+
+  if (constraints.antiKnight) {
+    const KNIGHT_OFFSETS = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        for (const [dr, dc] of KNIGHT_OFFSETS) {
+          const rr = r + dr, cc = c + dc;
+          if (rr < 0 || rr > 8 || cc < 0 || cc > 8) continue;
+          if (grid[rr][cc] === v) {
+            conflicts.add(`${r},${c}`);
+            conflicts.add(`${rr},${cc}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.sandwich) {
+    const sandwichSum = (cells) => {
+      const idx1 = cells.findIndex(([r, c]) => grid[r][c] === 1);
+      const idx9 = cells.findIndex(([r, c]) => grid[r][c] === 9);
+      if (idx1 === -1 || idx9 === -1) return null;
+      const lo = Math.min(idx1, idx9), hi = Math.max(idx1, idx9);
+      const between = cells.slice(lo + 1, hi);
+      const filled = between.filter(([r, c]) => grid[r][c] !== 0);
+      const sum = filled.reduce((s, [r, c]) => s + grid[r][c], 0);
+      const allFilled = filled.length === between.length;
+      return { between, sum, allFilled };
+    };
+    const checkLine = (cells, clue) => {
+      if (clue == null) return;
+      const result = sandwichSum(cells);
+      if (!result) return;
+      const { between, sum, allFilled } = result;
+      const over = sum > clue;
+      const wrongTotal = allFilled && sum !== clue;
+      if (over || wrongTotal) {
+        for (const [r, c] of between) {
+          if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+        }
+      }
+    };
+    const rowsClues = constraints.sandwich.rows || [];
+    for (let r = 0; r < 9; r++) {
+      checkLine(Array.from({ length: 9 }, (_, c) => [r, c]), rowsClues[r]);
+    }
+    const colsClues = constraints.sandwich.cols || [];
+    for (let c = 0; c < 9; c++) {
+      checkLine(Array.from({ length: 9 }, (_, r) => [r, c]), colsClues[c]);
+    }
+  }
+
+  if (constraints.xv) {
+    for (const pair of constraints.xv) {
+      const [ar, ac] = pair.a;
+      const [br, bc] = pair.b;
+      const av = grid[ar][ac], bv = grid[br][bc];
+      if (av === 0 || bv === 0) continue;
+      const target = pair.kind === "X" ? 10 : 5;
+      if (av + bv !== target) {
+        conflicts.add(`${ar},${ac}`);
+        conflicts.add(`${br},${bc}`);
+      }
+    }
+  }
+
+  return conflicts;
+}
+
 // Exported API
 window.SudokuEngine = {
   generatePuzzle,
@@ -355,6 +557,7 @@ window.SudokuEngine = {
   getHint,
   isBoardComplete,
   findConflicts,
+  findVariantConflicts,
   isValidPlacement,
   cloneGrid,
 };
