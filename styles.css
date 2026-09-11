@@ -128,6 +128,32 @@ button {
   touch-action: none;
 }
 
+/* Killer cages and kropki dots for variant puzzles — a static SVG drawn
+   once per puzzle load, sitting above cell backgrounds/highlights but
+   below the thicker 3x3 box-separator overlay (z-index 2). */
+.constraint-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.constraint-svg { width: 100%; height: 100%; display: block; }
+.cage-line {
+  stroke: var(--ink-soft);
+  stroke-width: 0.5;
+  stroke-dasharray: 1.6 1.2;
+  fill: none;
+}
+.cage-sum {
+  font-size: 3.4px;
+  font-family: var(--sans);
+  font-weight: 600;
+  fill: var(--ink);
+}
+.kropki-dot { stroke-width: 0.6; }
+.kropki-dot.kropki-white { fill: var(--paper); stroke: var(--ink); }
+.kropki-dot.kropki-black { fill: var(--ink); stroke: var(--ink); }
+
 .cell {
   display: flex;
   align-items: center;
@@ -319,6 +345,7 @@ button {
 }
 .icon-tool:active { background: var(--accent-soft); }
 .icon-tool.on { background: var(--accent); color: #fff; }
+.icon-tool.disabled { opacity: 0.35; }
 
 .hint-output {
   padding: 10px 14px;
@@ -405,6 +432,24 @@ button {
   color: #fff;
 }
 .btn.small { width: auto; padding: 7px 12px; font-size: 13px; }
+
+.puzzle-library-label {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.puzzle-library { display: flex; flex-direction: column; gap: 8px; }
+.puzzle-entry {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+.puzzle-entry-title { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.puzzle-entry-blurb { font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
 
 /* ---------- Win overlay ---------- */
 .overlay {

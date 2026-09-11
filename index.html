@@ -34,6 +34,7 @@
           <div class="box-line box-line-v" style="left:66.6667%"></div>
           <div class="box-line box-line-h" style="top:33.3333%"></div>
           <div class="box-line box-line-h" style="top:66.6667%"></div>
+          <div class="constraint-overlay" id="constraintOverlay"></div>
         </div>
       </div>
     </section>
@@ -110,6 +111,9 @@
         <button class="chip" data-diff="expert">Expert</button>
       </div>
       <button class="btn primary" id="newPuzzleBtn">Start new puzzle</button>
+
+      <div class="puzzle-library-label">Featured puzzles</div>
+      <div class="puzzle-library" id="puzzleLibrary"></div>
     </div>
   </div>
 
@@ -133,6 +137,7 @@
 </div>
 
 <script src="sudoku-engine.js"></script>
+<script src="puzzles.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -347,6 +347,65 @@ function findConflicts(grid) {
   return conflicts;
 }
 
+// ------------------------------------------------------------
+// Variant constraints (killer cages, kropki dots). Classic row/col/box
+// rules are unaffected by these — findConflicts still applies on top.
+// ------------------------------------------------------------
+function findVariantConflicts(grid, constraints) {
+  const conflicts = new Set();
+  if (!constraints) return conflicts;
+
+  if (constraints.cages) {
+    for (const cage of constraints.cages) {
+      const seen = new Set();
+      let sum = 0;
+      let filledCount = 0;
+      for (const [r, c] of cage.cells) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        filledCount++;
+        sum += v;
+        if (seen.has(v)) {
+          // duplicate digit within one cage — every cell holding that
+          // digit in this cage is in conflict
+          for (const [rr, cc] of cage.cells) {
+            if (grid[rr][cc] === v) conflicts.add(`${rr},${cc}`);
+          }
+        }
+        seen.add(v);
+      }
+      if (cage.sum != null) {
+        const over = sum > cage.sum;
+        const wrongTotal = filledCount === cage.cells.length && sum !== cage.sum;
+        if (over || wrongTotal) {
+          for (const [r, c] of cage.cells) {
+            if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.kropki) {
+    for (const dot of constraints.kropki) {
+      const [ar, ac] = dot.a;
+      const [br, bc] = dot.b;
+      const av = grid[ar][ac];
+      const bv = grid[br][bc];
+      if (av === 0 || bv === 0) continue;
+      const isConsecutive = Math.abs(av - bv) === 1;
+      const isDouble = av === bv * 2 || bv === av * 2;
+      const ok = dot.kind === "white" ? isConsecutive : isDouble;
+      if (!ok) {
+        conflicts.add(`${ar},${ac}`);
+        conflicts.add(`${br},${bc}`);
+      }
+    }
+  }
+
+  return conflicts;
+}
+
 // Exported API
 window.SudokuEngine = {
   generatePuzzle,
@@ -355,6 +414,7 @@ window.SudokuEngine = {
   getHint,
   isBoardComplete,
   findConflicts,
+  findVariantConflicts,
   isValidPlacement,
   cloneGrid,
 };

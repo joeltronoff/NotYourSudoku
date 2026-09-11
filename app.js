@@ -1,6 +1,12 @@
 (() => {
-  const STORAGE_KEY = "solvers-notebook-state-v2";
-  const { generatePuzzle, computeCandidates, getHint, isBoardComplete, findConflicts, cloneGrid } = window.SudokuEngine;
+  const STORAGE_KEY = "solvers-notebook-state-v3";
+  const { generatePuzzle, computeCandidates, getHint, isBoardComplete, findConflicts, findVariantConflicts, cloneGrid } = window.SudokuEngine;
+
+  function currentConflicts() {
+    const classic = findConflicts(state.grid);
+    const variant = findVariantConflicts(state.grid, { cages: state.cages, kropki: state.kropki });
+    return new Set([...classic, ...variant]);
+  }
 
   // Cell-shading palette for the "color" tool. Soft enough that given/user/
   // conflict text stays legible on top, but distinct from one another.
@@ -25,6 +31,7 @@
   const difficultyDisplay = document.getElementById("difficultyDisplay");
   const hintOutput = document.getElementById("hintOutput");
   const winOverlay = document.getElementById("winOverlay");
+  const hintBtn = document.getElementById("hintBtn");
 
   function emptyNotes() {
     return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
@@ -43,9 +50,13 @@
     const { puzzle, solution } = generatePuzzle(difficulty);
     state = {
       difficulty,
+      puzzleId: null,
+      title: null,
       givens: cloneGrid(puzzle),
       grid: cloneGrid(puzzle),
       solution,
+      cages: [],
+      kropki: [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -65,6 +76,43 @@
     startTimer();
     saveState();
     render();
+    renderConstraintOverlays();
+    updateHintAvailability();
+  }
+
+  // Loads a hand-authored variant puzzle from window.PuzzleLibrary instead
+  // of generating a random classic one.
+  function loadPuzzle(entry) {
+    state = {
+      difficulty: null,
+      puzzleId: entry.id,
+      title: entry.title,
+      givens: cloneGrid(entry.givens),
+      grid: cloneGrid(entry.givens),
+      solution: entry.solution,
+      cages: entry.cages || [],
+      kropki: entry.kropki || [],
+      cornerNotes: emptyNotes(),
+      centerNotes: emptyNotes(),
+      colors: emptyColors(),
+      selected: [],
+      inputMode: "digit",
+      mistakes: 0,
+      seconds: 0,
+      history: [],
+      hintCell: null,
+      won: false,
+    };
+    difficultyDisplay.textContent = entry.title;
+    hintOutput.classList.remove("show");
+    winOverlay.classList.remove("show");
+    closeSettings();
+    setInputMode("digit");
+    startTimer();
+    saveState();
+    render();
+    renderConstraintOverlays();
+    updateHintAvailability();
   }
 
   function startTimer() {
@@ -87,9 +135,13 @@
   function saveState() {
     const serializable = {
       difficulty: state.difficulty,
+      puzzleId: state.puzzleId,
+      title: state.title,
       givens: state.givens,
       grid: state.grid,
       solution: state.solution,
+      cages: state.cages,
+      kropki: state.kropki,
       cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
       centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
       colors: state.colors,
@@ -107,9 +159,13 @@
       const data = JSON.parse(raw);
       state = {
         difficulty: data.difficulty,
+        puzzleId: data.puzzleId || null,
+        title: data.title || null,
         givens: data.givens,
         grid: data.grid,
         solution: data.solution,
+        cages: data.cages || [],
+        kropki: data.kropki || [],
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
@@ -121,7 +177,7 @@
         hintCell: null,
         won: data.won,
       };
-      difficultyDisplay.textContent = state.difficulty[0].toUpperCase() + state.difficulty.slice(1);
+      difficultyDisplay.textContent = state.title || (state.difficulty[0].toUpperCase() + state.difficulty.slice(1));
       timerDisplay.textContent = formatTime(state.seconds);
       setInputMode("digit");
       if (!state.won) startTimer();
@@ -134,7 +190,7 @@
   // ---------------- Rendering ----------------
   function render() {
     boardEl.innerHTML = "";
-    const conflicts = findConflicts(state.grid);
+    const conflicts = currentConflicts();
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const cell = document.createElement("div");
@@ -238,6 +294,76 @@
       btn.addEventListener("click", () => inputNumber(n));
       numpadEl.appendChild(btn);
     }
+  }
+
+  // Killer cages and kropki dots are static for the life of a loaded
+  // puzzle, so they're drawn once (as an SVG overlay) rather than being
+  // rebuilt on every render() the way cell contents are.
+  const constraintOverlayEl = document.getElementById("constraintOverlay");
+  function renderConstraintOverlays() {
+    constraintOverlayEl.innerHTML = "";
+    const hasCages = state.cages && state.cages.length > 0;
+    const hasKropki = state.kropki && state.kropki.length > 0;
+    if (!hasCages && !hasKropki) return;
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 90 90");
+    svg.setAttribute("class", "constraint-svg");
+    const INSET = 1.3;
+
+    function addLine(x1, y1, x2, y2) {
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute("x1", x1);
+      line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2);
+      line.setAttribute("y2", y2);
+      line.setAttribute("class", "cage-line");
+      svg.appendChild(line);
+    }
+
+    if (hasCages) {
+      const cageOf = new Map();
+      state.cages.forEach((cage, idx) => {
+        cage.cells.forEach(([r, c]) => cageOf.set(`${r},${c}`, idx));
+      });
+      state.cages.forEach((cage, idx) => {
+        const sameCage = (r, c) => cageOf.get(`${r},${c}`) === idx;
+        cage.cells.forEach(([r, c]) => {
+          const x0 = c * 10, y0 = r * 10, x1 = x0 + 10, y1 = y0 + 10;
+          if (r === 0 || !sameCage(r - 1, c)) addLine(x0 + INSET, y0 + INSET, x1 - INSET, y0 + INSET);
+          if (r === 8 || !sameCage(r + 1, c)) addLine(x0 + INSET, y1 - INSET, x1 - INSET, y1 - INSET);
+          if (c === 0 || !sameCage(r, c - 1)) addLine(x0 + INSET, y0 + INSET, x0 + INSET, y1 - INSET);
+          if (c === 8 || !sameCage(r, c + 1)) addLine(x1 - INSET, y0 + INSET, x1 - INSET, y1 - INSET);
+        });
+        let [tr, tc] = cage.cells[0];
+        for (const [r, c] of cage.cells) {
+          if (r < tr || (r === tr && c < tc)) { tr = r; tc = c; }
+        }
+        const text = document.createElementNS(svgNS, "text");
+        text.setAttribute("x", tc * 10 + INSET + 0.6);
+        text.setAttribute("y", tr * 10 + INSET + 2.6);
+        text.setAttribute("class", "cage-sum");
+        text.textContent = cage.sum;
+        svg.appendChild(text);
+      });
+    }
+
+    if (hasKropki) {
+      state.kropki.forEach(dot => {
+        const [r1, c1] = dot.a, [r2, c2] = dot.b;
+        const cx = r1 === r2 ? Math.max(c1, c2) * 10 : c1 * 10 + 5;
+        const cy = r1 === r2 ? r1 * 10 + 5 : Math.max(r1, r2) * 10;
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", cx);
+        circle.setAttribute("cy", cy);
+        circle.setAttribute("r", 1.3);
+        circle.setAttribute("class", dot.kind === "white" ? "kropki-dot kropki-white" : "kropki-dot kropki-black");
+        svg.appendChild(circle);
+      });
+    }
+
+    constraintOverlayEl.appendChild(svg);
   }
 
   function selectCell(r, c) {
@@ -354,7 +480,7 @@
   }
 
   function checkWin() {
-    if (isBoardComplete(state.grid) && findConflicts(state.grid).size === 0) {
+    if (isBoardComplete(state.grid) && currentConflicts().size === 0) {
       state.won = true;
       saveState();
       document.getElementById("winTime").textContent = formatTime(state.seconds);
@@ -363,7 +489,20 @@
     }
   }
 
+  function isVariantActive() {
+    return (state.cages && state.cages.length > 0) || (state.kropki && state.kropki.length > 0);
+  }
+
+  function updateHintAvailability() {
+    hintBtn.classList.toggle("disabled", isVariantActive());
+  }
+
   function showHint(level) {
+    if (isVariantActive()) {
+      hintOutput.innerHTML = `<span class="hint-technique">Hint</span>Hints aren't available yet for variant puzzles — the classic solver doesn't know about cages or dots, so its suggestions could be wrong here.`;
+      hintOutput.classList.add("show");
+      return;
+    }
     const hint = getHint(state.grid, level);
     state.hintCell = hint.cell || null;
     let html = `<span class="hint-technique">${hint.technique}</span>${hint.explanation}`;
@@ -414,14 +553,23 @@
   });
   document.querySelector('.chip[data-diff="medium"]').classList.add("active");
 
+  const puzzleLibraryEl = document.getElementById("puzzleLibrary");
+  (window.PuzzleLibrary || []).forEach(entry => {
+    const btn = document.createElement("button");
+    btn.className = "btn puzzle-entry";
+    btn.innerHTML = `<span class="puzzle-entry-title">${entry.title}</span><span class="puzzle-entry-blurb">${entry.blurb || ""}</span>`;
+    btn.addEventListener("click", () => loadPuzzle(entry));
+    puzzleLibraryEl.appendChild(btn);
+  });
+
   document.getElementById("undoBtn").addEventListener("click", undo);
   document.getElementById("eraseBtn").addEventListener("click", eraseCell);
 
-  document.getElementById("hintBtn").addEventListener("click", () => showHint("nudge"));
+  hintBtn.addEventListener("click", () => showHint("nudge"));
 
   document.getElementById("checkBtn").addEventListener("click", () => {
     render();
-    const conflicts = findConflicts(state.grid);
+    const conflicts = currentConflicts();
     hintOutput.innerHTML = conflicts.size > 0
       ? `<span class="hint-technique">Check</span>Found ${conflicts.size} conflicting cell${conflicts.size === 1 ? "" : "s"} — highlighted in red.`
       : `<span class="hint-technique">Check</span>No conflicts so far. Keep going.`;
@@ -494,5 +642,7 @@
   } else {
     document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.diff === state.difficulty));
     render();
+    renderConstraintOverlays();
+    updateHintAvailability();
   }
 })();
