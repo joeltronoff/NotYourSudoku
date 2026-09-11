@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1F2E3D" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Solver's Notebook" />
+<title>Solver's Notebook — Sudoku</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- Header -->
+  <header class="titlebar">
+    <div class="brand">
+      <span class="brand-mark">§</span>
+      <h1>Solver's Notebook</h1>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="menuBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- Puzzle column -->
+    <section class="puzzle-col">
+      <div class="status-strip">
+        <div class="stat">
+          <span class="stat-label">Time</span>
+          <span class="stat-value" id="timerDisplay">00:00</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Mistakes</span>
+          <span class="stat-value" id="mistakesDisplay">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Difficulty</span>
+          <span class="stat-value" id="difficultyDisplay">Medium</span>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" id="board" role="grid" aria-label="Sudoku board"></div>
+      </div>
+
+      <div class="mobile-numpad" id="mobileNumpad"></div>
+    </section>
+
+    <!-- Control panel -->
+    <aside class="panel">
+      <div class="panel-block">
+        <h2>New puzzle</h2>
+        <div class="difficulty-grid" id="difficultyGrid">
+          <button class="chip" data-diff="easy">Easy</button>
+          <button class="chip" data-diff="medium">Medium</button>
+          <button class="chip" data-diff="hard">Hard</button>
+          <button class="chip" data-diff="expert">Expert</button>
+        </div>
+        <button class="btn primary" id="newPuzzleBtn">Start new puzzle</button>
+      </div>
+
+      <div class="panel-block">
+        <h2>Tools</h2>
+        <div class="tool-row">
+          <button class="btn" id="undoBtn">Undo</button>
+          <button class="btn" id="eraseBtn">Erase</button>
+        </div>
+        <button class="btn toggle" id="notesBtn">
+          <span>Pencil marks</span>
+          <span class="toggle-state" id="notesState">Off</span>
+        </button>
+      </div>
+
+      <div class="panel-block hint-block">
+        <h2>Stuck?</h2>
+        <p class="hint-copy">Get a logic-based hint — the same kind of deduction Simon reaches for on the show.</p>
+        <button class="btn" id="nudgeBtn">Give me a nudge</button>
+        <button class="btn accent" id="revealBtn">Reveal the move</button>
+        <div class="hint-output" id="hintOutput"></div>
+      </div>
+
+      <div class="panel-block">
+        <button class="btn ghost" id="checkBtn">Check board</button>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Win overlay -->
+  <div class="overlay" id="winOverlay">
+    <div class="overlay-card">
+      <p class="overlay-eyebrow">Solved</p>
+      <h2 id="winTime">00:00</h2>
+      <p id="winMistakes">0 mistakes</p>
+      <button class="btn primary" id="winNewBtn">New puzzle</button>
+    </div>
+  </div>
+
+  <!-- Install prompt -->
+  <div class="install-banner" id="installBanner">
+    <span>Add Solver's Notebook to your home screen for the full app feel.</span>
+    <button id="installBtn" class="btn small">Install</button>
+    <button id="dismissInstall" class="icon-btn small" aria-label="Dismiss">✕</button>
+  </div>
+
+</div>
+
+<script src="sudoku-engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
