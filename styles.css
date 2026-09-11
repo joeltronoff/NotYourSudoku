@@ -131,6 +131,7 @@ button {
   align-items: center;
   justify-content: center;
   position: relative;
+  container-type: size;
   font-family: var(--serif);
   font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--grid-line);
@@ -161,6 +162,8 @@ button {
 
 .cell .value {
   font-size: clamp(16px, 4.2vmin, 30px);
+  font-size: 100cqh;
+  line-height: 1;
   color: var(--given);
 }
 .cell.user .value { color: var(--user-entry); font-weight: 600; }
