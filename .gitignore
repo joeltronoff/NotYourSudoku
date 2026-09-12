@@ -1,2 +1,5 @@
 node_modules/
 tools/verify-puzzle/_tmp_check.json
+tools/generate-puzzles/_ba_tmp*.json
+tools/generate-puzzles/solver-verified.json
+tools/generate-puzzles/sandwich-xv.json

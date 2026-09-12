@@ -188,6 +188,16 @@
     });
   }
 
+  const STAR_ICON = '<svg viewBox="0 0 24 24" width="9" height="9"><path d="M12 2.5l2.87 6.06 6.63.79-4.9 4.6 1.28 6.55L12 17.4l-5.88 3.1 1.28-6.55-4.9-4.6 6.63-.79z"/></svg>';
+  function renderStars(count) {
+    const n = Math.max(1, Math.min(10, count || 1));
+    let out = '<span class="menu-puzzle-stars" title="' + n + '/10 difficulty" aria-label="' + n + ' out of 10 difficulty stars">';
+    for (let i = 1; i <= 10; i++) {
+      out += `<span class="star${i <= n ? " filled" : ""}">${STAR_ICON}</span>`;
+    }
+    return out + '</span>';
+  }
+
   function renderVariantMenu(key) {
     const info = VARIANT_INFO[key];
     document.getElementById("variantMenuTitle").textContent = info.title;
@@ -210,6 +220,7 @@
         <span class="menu-puzzle-info">
           <span class="menu-puzzle-title-row">
             <span class="menu-puzzle-title">${entry.title}</span>
+            ${renderStars(entry.stars)}
             ${combinedTag}
           </span>
           <span class="menu-puzzle-blurb">${entry.blurb || ""}</span>
