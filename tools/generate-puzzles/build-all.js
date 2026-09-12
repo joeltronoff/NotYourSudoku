@@ -190,7 +190,9 @@ const entries = [];
 // irregular tiling into 3-5 cell regions (BFS flood-fill from random
 // seeds), full-grid coverage, zero givens, retried with fresh grids/tilings
 // until the solver confirms a genuinely unique, chain-free solve.
-function randomCageTiling(rand) {
+const MAX_CAGE_SIZE = 5;
+function cageValues(grid, cage) { return cage.map(([r, c]) => grid[r][c]); }
+function randomCageTiling(rand, grid) {
   const covered = Array.from({ length: 9 }, () => Array(9).fill(false));
   const cages = [];
   const cellOrder = [];
@@ -198,44 +200,60 @@ function randomCageTiling(rand) {
   const order = shuffle(cellOrder, rand);
   for (const [r, c] of order) {
     if (covered[r][c]) continue;
-    // 2-3 cells only: cages of 4+ cells trigger a real correctness bug in
-    // lisudoku_solver independent of the Killer45 crash already patched
-    // (verified empirically -- pure 4-cell tilings reliably made brute_solve
-    // report "no solution" for a grid confirmed valid by construction).
-    // Filed as a known limitation; 2-3 cell cages are unaffected.
-    const targetSize = 2 + Math.floor(rand() * 2); // 2-3
+    // A killer cage may never repeat a digit -- earlier attempts at this
+    // (without a distinctness check) intermittently grew a cage that
+    // happened to include the same digit twice, which is a genuinely
+    // invalid cage, not a solver bug (a red herring this took a while to
+    // rule out: it *looked* like a solver limitation with 4+ cell cages
+    // because larger arbitrary-shaped cages are simply more likely to
+    // accidentally repeat a digit).
+    const targetSize = 2 + Math.floor(rand() * (MAX_CAGE_SIZE - 1)); // 2-5
     const cage = [[r, c]];
+    const usedValues = new Set([grid[r][c]]);
     covered[r][c] = true;
     while (cage.length < targetSize) {
-      // Candidate frontier cells adjacent to the current cage.
       const frontier = [];
       for (const [cr, cc] of cage) {
         for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
           const rr = cr + dr, cc2 = cc + dc;
           if (rr < 0 || rr > 8 || cc2 < 0 || cc2 > 8) continue;
           if (covered[rr][cc2]) continue;
+          if (usedValues.has(grid[rr][cc2])) continue; // would repeat a digit
           frontier.push([rr, cc2]);
         }
       }
       if (frontier.length === 0) break;
       const [nr, nc] = frontier[Math.floor(rand() * frontier.length)];
       cage.push([nr, nc]);
+      usedValues.add(grid[nr][nc]);
       covered[nr][nc] = true;
     }
     cages.push(cage);
   }
-  // Any leftover singleton (frontier exhausted early) gets merged into a
-  // orthogonally-adjacent existing cage so every cage stays >= 2 cells.
+  // Any leftover singleton (frontier exhausted early) gets merged into an
+  // orthogonally-adjacent cage that still has room AND wouldn't repeat a
+  // digit that cage already has.
   for (let idx = 0; idx < cages.length; idx++) {
     if (cages[idx].length !== 1) continue;
     const [r, c] = cages[idx][0];
+    const v = grid[r][c];
     for (const [dr, dc] of [[0,1],[0,-1],[1,0],[-1,0]]) {
       const rr = r + dr, cc = c + dc;
       if (rr < 0 || rr > 8 || cc < 0 || cc > 8) continue;
-      const other = cages.find((cage, j) => j !== idx && cage.some(([or, oc]) => or === rr && oc === cc));
+      const other = cages.find((cage, j) =>
+        j !== idx && cage.length < MAX_CAGE_SIZE &&
+        !cageValues(grid, cage).includes(v) &&
+        cage.some(([or, oc]) => or === rr && oc === cc));
       if (other) { other.push([r, c]); cages.splice(idx, 1); idx--; break; }
     }
   }
+  // A singleton that couldn't merge anywhere (every neighbor cage is full
+  // or would repeat its digit) is left unresolved -- signal failure so the
+  // caller retries with a different seed/grid instead of shipping an
+  // invalid cage.
+  if (cages.some(cage => cage.length < 2)) return null;
+  // Sanity check every cage is genuinely digit-distinct (belt and braces).
+  if (cages.some(cage => new Set(cageValues(grid, cage)).size !== cage.length)) return null;
   return cages;
 }
 // 2-3 cell cages alone don't carry enough information to pin a unique
@@ -248,7 +266,13 @@ function randomCageTiling(rand) {
 const KILLER_TITLES = ['Broken Boxes', 'No Man\'s Sums', 'Fault Lines'];
 for (let i = 0; i < 3; i++) {
   const grid = freshGrid(20001 + i * 97);
-  const cageCells = randomCageTiling(mulberry32(22001 + i * 613));
+  let cageCells = null;
+  let tilingSeed = 22001 + i * 613;
+  let tilingAttempts = 0;
+  while (!cageCells) {
+    if (++tilingAttempts > 100) throw new Error(`killer-${i}: couldn't produce a valid tiling after 100 attempts`);
+    cageCells = randomCageTiling(mulberry32(tilingSeed++), grid);
+  }
   const killerCages = cageCells.map(cells => ({ sum: cells.reduce((s, [r,c]) => s + grid[r][c], 0), region: cells.map(([row,col]) => ({ row, col })) }));
   const fullGivens = [];
   for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) fullGivens.push({ position: { row: r, col: c }, value: grid[r][c] });
