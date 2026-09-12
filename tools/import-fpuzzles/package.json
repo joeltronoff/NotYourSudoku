@@ -1,0 +1,10 @@
+{
+  "name": "import-fpuzzles",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Converts f-puzzles / SudokuPad self-contained puzzle links into puzzles.js entries for Solver's Notebook.",
+  "main": "convert.js",
+  "dependencies": {
+    "lz-string": "^1.5.0"
+  }
+}
