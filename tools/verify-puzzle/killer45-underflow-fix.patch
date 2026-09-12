@@ -1,0 +1,28 @@
+diff --git a/src/solver/logical_solver/killer45.rs b/src/solver/logical_solver/killer45.rs
+index 9297bbd..a819d0b 100644
+--- a/src/solver/logical_solver/killer45.rs
++++ b/src/solver/logical_solver/killer45.rs
+@@ -42,7 +42,14 @@ impl Killer45 {
+     for (killer_cage_index, killer_cage) in constraint.killer_cages.iter().enumerate() {
+       if killer_cage.sum.is_some() && Self::is_empty_area_subset(&Area::KillerCage(killer_cage_index), area, &solver) {
+         // TODO: subset logic implemented twice, is_empty_area_subset could return the cells
+-        region_sum_left -= Self::compute_subset_area_sum(killer_cage, area, solver);
++        let subset_sum = Self::compute_subset_area_sum(killer_cage, area, solver);
++        // An inconsistent hypothetical digit placement mid-brute-force can
++        // make this exceed what's left in the area (overlapping/irregular
++        // cages aren't fully supported here per the TODO above) -- that
++        // just means this state is already invalid, so bail out instead
++        // of panicking on the unsigned subtraction.
++        if subset_sum > region_sum_left { return vec![] }
++        region_sum_left -= subset_sum;
+         let killer_cage_set: HashSet<CellPosition> = killer_cage.region.iter().copied().collect();
+         area_cells_set = area_cells_set.difference(&killer_cage_set).copied().collect();
+       }
+@@ -52,6 +59,7 @@ impl Killer45 {
+     for cell in &area_cells_set.iter().copied().collect_vec() {
+       let value = solver.grid[cell.row][cell.col];
+       if value != 0 && area_cells_set.remove(cell) {
++        if value > region_sum_left { return vec![] }
+         region_sum_left -= value;
+       }
+     }
