@@ -137,6 +137,13 @@
 
   function capitalize(s) { return s[0].toUpperCase() + s.slice(1); }
 
+  // A puzzle can belong to more than one category (e.g. anti-knight +
+  // kropki combined in one grid) via a `variants` array; single-variant
+  // entries just keep using the older `variant` string field.
+  function entryVariants(entry) {
+    return entry.variants || [entry.variant];
+  }
+
   function renderMainMenu() {
     const progress = loadProgress();
 
@@ -152,7 +159,9 @@
 
     const byVariant = {};
     (window.PuzzleLibrary || []).forEach(entry => {
-      (byVariant[entry.variant] = byVariant[entry.variant] || []).push(entry);
+      entryVariants(entry).forEach(v => {
+        (byVariant[v] = byVariant[v] || []).push(entry);
+      });
     });
 
     const listEl = document.getElementById("menuVariantList");
@@ -185,17 +194,24 @@
     document.getElementById("variantMenuBlurb").textContent = info.blurb;
 
     const progress = loadProgress();
-    const entries = (window.PuzzleLibrary || []).filter(e => e.variant === key);
+    const entries = (window.PuzzleLibrary || []).filter(e => entryVariants(e).includes(key));
     const listEl = document.getElementById("menuPuzzleList");
     listEl.innerHTML = "";
     entries.forEach(entry => {
       const solved = progress.completed.includes(entry.id);
+      const otherVariants = entryVariants(entry).filter(v => v !== key);
+      const combinedTag = otherVariants.length > 0
+        ? `<span class="menu-puzzle-combo">+ ${otherVariants.map(v => VARIANT_INFO[v] ? VARIANT_INFO[v].title : v).join(", ")}</span>`
+        : "";
       const row = document.createElement("button");
       row.className = "menu-puzzle-row" + (solved ? " solved" : "");
       row.innerHTML = `
         <span class="menu-puzzle-check">${solved ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : ""}</span>
         <span class="menu-puzzle-info">
-          <span class="menu-puzzle-title">${entry.title}</span>
+          <span class="menu-puzzle-title-row">
+            <span class="menu-puzzle-title">${entry.title}</span>
+            ${combinedTag}
+          </span>
           <span class="menu-puzzle-blurb">${entry.blurb || ""}</span>
         </span>
       `;

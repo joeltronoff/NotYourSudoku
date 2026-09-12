@@ -1158,6 +1158,78 @@
       antiKnight: true
     },
 
+    // ---- Multi-variant puzzles (tagged into more than one folder) ----
+    {
+      id: "antiknight-kropki-1",
+      title: "Antiknight Kropki (No Givens)",
+      blurb: "Anti-knight + kropki dots, zero givens. Needs locked triples and careful peer elimination — pure deduction, no guessing.",
+      givens: [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ],
+      solution: [
+        [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        [4, 5, 6, 7, 8, 9, 1, 2, 3],
+        [7, 8, 9, 1, 2, 3, 4, 5, 6],
+        [2, 3, 4, 5, 6, 7, 8, 9, 1],
+        [5, 6, 7, 8, 9, 1, 2, 3, 4],
+        [8, 9, 1, 2, 3, 4, 5, 6, 7],
+        [3, 4, 5, 6, 7, 8, 9, 1, 2],
+        [6, 7, 8, 9, 1, 2, 3, 4, 5],
+        [9, 1, 2, 3, 4, 5, 6, 7, 8]
+      ],
+      antiKnight: true,
+      kropki: [
+        { a: [0, 2], b: [0, 3], kind: "white" },
+        { a: [0, 2], b: [1, 2], kind: "black" },
+        { a: [0, 3], b: [0, 4], kind: "white" },
+        { a: [0, 6], b: [0, 7], kind: "white" },
+        { a: [1, 2], b: [1, 3], kind: "white" },
+        { a: [1, 3], b: [1, 4], kind: "white" },
+        { a: [1, 6], b: [1, 7], kind: "white" },
+        { a: [1, 7], b: [1, 8], kind: "white" },
+        { a: [2, 1], b: [2, 2], kind: "white" },
+        { a: [2, 4], b: [2, 5], kind: "white" },
+        { a: [2, 5], b: [2, 6], kind: "white" },
+        { a: [2, 6], b: [2, 7], kind: "white" },
+        { a: [2, 7], b: [2, 8], kind: "white" },
+        { a: [3, 0], b: [3, 1], kind: "white" },
+        { a: [3, 1], b: [3, 2], kind: "white" },
+        { a: [3, 2], b: [3, 3], kind: "white" },
+        { a: [3, 3], b: [3, 4], kind: "white" },
+        { a: [3, 4], b: [3, 5], kind: "white" },
+        { a: [4, 1], b: [4, 2], kind: "white" },
+        { a: [4, 3], b: [4, 4], kind: "white" },
+        { a: [4, 7], b: [5, 7], kind: "black" },
+        { a: [5, 3], b: [5, 4], kind: "white" },
+        { a: [5, 4], b: [5, 5], kind: "white" },
+        { a: [5, 5], b: [6, 5], kind: "black" },
+        { a: [5, 6], b: [5, 7], kind: "white" },
+        { a: [5, 7], b: [5, 8], kind: "white" },
+        { a: [6, 1], b: [6, 2], kind: "white" },
+        { a: [6, 5], b: [6, 6], kind: "white" },
+        { a: [6, 7], b: [6, 8], kind: "white" },
+        { a: [7, 0], b: [7, 1], kind: "white" },
+        { a: [7, 2], b: [7, 3], kind: "white" },
+        { a: [7, 4], b: [7, 5], kind: "white" },
+        { a: [7, 5], b: [7, 6], kind: "white" },
+        { a: [7, 6], b: [7, 7], kind: "white" },
+        { a: [7, 6], b: [8, 6], kind: "black" },
+        { a: [7, 7], b: [7, 8], kind: "white" },
+        { a: [8, 4], b: [8, 5], kind: "white" },
+        { a: [8, 5], b: [8, 6], kind: "white" },
+        { a: [8, 7], b: [8, 8], kind: "white" }
+      ],
+      variants: ["antiknight", "kropki"]
+    },
+
     // ---- Generated sandwich puzzles ----
     {
       id: "sandwich-gen-1",
