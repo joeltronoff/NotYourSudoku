@@ -250,8 +250,8 @@
     setInputMode("digit");
     startTimer();
     saveState();
-    render();
     renderConstraintOverlays();
+    render();
     renderSandwichClues();
     updateHintAvailability();
     showGame();
@@ -291,8 +291,8 @@
     setInputMode("digit");
     startTimer();
     saveState();
-    render();
     renderConstraintOverlays();
+    render();
     renderSandwichClues();
     updateHintAvailability();
     showGame();
@@ -1013,8 +1013,8 @@
   // any) is loaded into memory so "Continue" can drop straight back into it,
   // but the board itself only becomes visible once something is chosen.
   if (loadState()) {
-    render();
     renderConstraintOverlays();
+    render();
     renderSandwichClues();
     updateHintAvailability();
   }
