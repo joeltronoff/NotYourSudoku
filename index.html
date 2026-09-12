@@ -126,6 +126,44 @@
         <button class="icon-tool" id="checkBtn" title="Check board" aria-label="Check board for conflicts">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         </button>
+        <button class="icon-tool" id="killerCalcBtn" title="Killer calculator" aria-label="Open killer cage calculator">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="2" width="16" height="20" rx="2.5"/>
+            <line x1="7.5" y1="6.5" x2="16.5" y2="6.5"/>
+            <circle cx="7.5" cy="11" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="11" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="16.5" cy="11" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="7.5" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="16.5" cy="15" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="7.5" cy="19" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="19" r="1.1" fill="currentColor" stroke="none"/>
+            <circle cx="16.5" cy="19" r="1.1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="killer-calc" id="killerCalc" hidden>
+        <div class="killer-calc-controls">
+          <div class="calc-field">
+            <span class="calc-field-label">Cells</span>
+            <div class="stepper">
+              <button class="stepper-btn" id="calcCellsMinus" aria-label="Fewer cells">−</button>
+              <span class="stepper-value" id="calcCellsValue">3</span>
+              <button class="stepper-btn" id="calcCellsPlus" aria-label="More cells">+</button>
+            </div>
+          </div>
+          <div class="calc-field">
+            <span class="calc-field-label">Sum</span>
+            <div class="stepper">
+              <button class="stepper-btn" id="calcSumMinus" aria-label="Lower sum">−</button>
+              <span class="stepper-value" id="calcSumValue">15</span>
+              <button class="stepper-btn" id="calcSumPlus" aria-label="Higher sum">+</button>
+            </div>
+          </div>
+        </div>
+        <p class="killer-calc-hint">Tap a combo to cross it out once you know it's not possible.</p>
+        <div class="killer-calc-combos" id="killerCalcCombos"></div>
       </div>
 
       <div class="hint-output" id="hintOutput"></div>

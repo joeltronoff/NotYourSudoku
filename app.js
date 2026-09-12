@@ -948,6 +948,83 @@
     hintOutput.classList.add("show");
   });
 
+  // ---------------- Killer cage calculator ----------------
+  // Every way to pick `cells` distinct digits 1-9 that sum to `sum` —
+  // the standard killer-cage combination reference. Small enough search
+  // space (at most 9 digits) that a plain backtracking search is instant.
+  function computeKillerCombos(cells, sum) {
+    const results = [];
+    function backtrack(start, remaining, count, combo) {
+      if (count === cells) {
+        if (remaining === 0) results.push(combo.slice());
+        return;
+      }
+      for (let d = start; d <= 9; d++) {
+        if (d > remaining) break;
+        combo.push(d);
+        backtrack(d + 1, remaining - d, count + 1, combo);
+        combo.pop();
+      }
+    }
+    backtrack(1, sum, 0, []);
+    return results;
+  }
+  function killerMinSum(cells) { return (cells * (cells + 1)) / 2; }
+  function killerMaxSum(cells) { return (cells * (19 - cells)) / 2; }
+
+  const killerCalcBtn = document.getElementById("killerCalcBtn");
+  const killerCalcEl = document.getElementById("killerCalc");
+  const calcCellsValueEl = document.getElementById("calcCellsValue");
+  const calcSumValueEl = document.getElementById("calcSumValue");
+  const killerCalcCombosEl = document.getElementById("killerCalcCombos");
+  let calcCells = 3;
+  let calcSum = 15;
+
+  function renderKillerCalc() {
+    calcCellsValueEl.textContent = calcCells;
+    calcSumValueEl.textContent = calcSum;
+    const combos = computeKillerCombos(calcCells, calcSum);
+    killerCalcCombosEl.innerHTML = "";
+    if (combos.length === 0) {
+      const p = document.createElement("p");
+      p.className = "killer-calc-empty";
+      p.textContent = "No combination of that many cells sums to that total.";
+      killerCalcCombosEl.appendChild(p);
+      return;
+    }
+    combos.forEach(combo => {
+      const btn = document.createElement("button");
+      btn.className = "combo-chip";
+      btn.textContent = combo.join("  ");
+      btn.addEventListener("click", () => btn.classList.toggle("crossed-out"));
+      killerCalcCombosEl.appendChild(btn);
+    });
+  }
+
+  function adjustCalcCells(delta) {
+    calcCells = Math.max(2, Math.min(9, calcCells + delta));
+    calcSum = Math.max(killerMinSum(calcCells), Math.min(killerMaxSum(calcCells), calcSum));
+    renderKillerCalc();
+  }
+  function adjustCalcSum(delta) {
+    calcSum = Math.max(killerMinSum(calcCells), Math.min(killerMaxSum(calcCells), calcSum + delta));
+    renderKillerCalc();
+  }
+
+  document.getElementById("calcCellsMinus").addEventListener("click", () => adjustCalcCells(-1));
+  document.getElementById("calcCellsPlus").addEventListener("click", () => adjustCalcCells(1));
+  document.getElementById("calcSumMinus").addEventListener("click", () => adjustCalcSum(-1));
+  document.getElementById("calcSumPlus").addEventListener("click", () => adjustCalcSum(1));
+
+  killerCalcBtn.addEventListener("click", () => {
+    const opening = killerCalcEl.hidden;
+    killerCalcEl.hidden = !opening;
+    killerCalcBtn.classList.toggle("on", opening);
+    // Only (re)compute on first open — reopening the panel without
+    // changing cells/sum should keep whatever's been crossed out.
+    if (opening && !killerCalcCombosEl.children.length) renderKillerCalc();
+  });
+
   // Physical keyboard support (useful with a Fold's larger screen / attached keyboard)
   document.addEventListener("keydown", (e) => {
     if (!state || layoutEl.hidden || state.selected.length === 0) return;
