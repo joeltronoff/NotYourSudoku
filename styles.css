@@ -835,20 +835,27 @@ button {
    Roughly square-to-landscape wide screens.
    ============================================================ */
 @media (min-width: 720px) and (min-aspect-ratio: 1/1) {
-  /* Tools stay below the board here too now (not beside it) — this
-     orientation is short on height rather than width, so the board and
-     the icon-row/numpad get noticeably more compact sizing than portrait
-     to still fit without scrolling. */
-  .board { width: min(94vw, 50dvh, 640px); }
+  .layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .puzzle-col { flex: 1.6; }
+  .board { width: min(100cqw, 92dvh, 760px); }
 
-  .icon-row { max-width: 380px; gap: 5px; }
-  .icon-tool svg { width: 18px; height: 18px; }
-
-  .input-row { max-width: 320px; gap: 8px; }
-  .mobile-numpad { max-width: 110px; gap: 5px; }
-  .num-btn { font-size: clamp(14px, 3.5vmin, 18px); border-radius: 8px; }
-  .mode-rail { width: 48px; gap: 5px; }
-  .mode-btn svg { width: 16px; height: 16px; }
+  .panel {
+    flex: 1;
+    max-width: 320px;
+    justify-content: center;
+    gap: 20px;
+    overflow-y: auto;
+  }
+  .input-row { max-width: 320px; }
+  .mobile-numpad {
+    max-width: 230px;
+    gap: 8px;
+  }
+  .num-btn { font-size: clamp(20px, 3vw, 28px); border-radius: 12px; }
+  .mode-btn svg { width: 18px; height: 18px; }
 }
 
 /* Very narrow cover-screen fallback */
