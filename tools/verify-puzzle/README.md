@@ -23,8 +23,20 @@ git clone https://github.com/lisudoku/lisudoku_solver.git /tmp/lisudoku_solver
 mkdir -p /tmp/lisudoku_solver/src/bin
 cp verify.rs /tmp/lisudoku_solver/src/bin/verify.rs
 cd /tmp/lisudoku_solver
+git apply /path/to/tools/verify-puzzle/killer45-underflow-fix.patch
 cargo build --bin verify
 ```
+
+The patch fixes a real crash in lisudoku_solver's own Killer45 technique:
+`region_sum_left -= ...` is an unsigned subtraction that panics
+("attempt to subtract with overflow") once brute-force search tries a
+hypothetical digit placement that makes a cage's accounted sum exceed
+what's left in a row/col/box — which happens routinely once killer cages
+get irregular/large enough to cross multiple house boundaries (encountered
+building irregular full-grid-tiling killer puzzles). The fix just treats
+the overflow as "this state is already invalid" (returns no steps)
+instead of crashing, which is always a safe fallback for a logical
+technique.
 
 ## Checking one candidate puzzle
 
