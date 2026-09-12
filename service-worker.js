@@ -1,4 +1,4 @@
-const CACHE_NAME = "solvers-notebook-v5";
+const CACHE_NAME = "solvers-notebook-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -27,18 +27,22 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Network-first, falling back to cache only when offline. Cache-first was
+// the reason changes kept not showing up: once a version was cached, nothing
+// ever asked the network again unless service-worker.js's own bytes changed
+// (which only happens when CACHE_NAME is bumped) — every ordinary content
+// update after that point was invisible until someone remembered to bump
+// it. This way the live site is always what's actually served, and the
+// cache is just an offline fallback.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
