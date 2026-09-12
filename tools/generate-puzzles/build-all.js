@@ -198,7 +198,12 @@ function randomCageTiling(rand) {
   const order = shuffle(cellOrder, rand);
   for (const [r, c] of order) {
     if (covered[r][c]) continue;
-    const targetSize = 3 + Math.floor(rand() * 3); // 3-5
+    // 2-3 cells only: cages of 4+ cells trigger a real correctness bug in
+    // lisudoku_solver independent of the Killer45 crash already patched
+    // (verified empirically -- pure 4-cell tilings reliably made brute_solve
+    // report "no solution" for a grid confirmed valid by construction).
+    // Filed as a known limitation; 2-3 cell cages are unaffected.
+    const targetSize = 2 + Math.floor(rand() * 2); // 2-3
     const cage = [[r, c]];
     covered[r][c] = true;
     while (cage.length < targetSize) {
@@ -233,28 +238,33 @@ function randomCageTiling(rand) {
   }
   return cages;
 }
+// 2-3 cell cages alone don't carry enough information to pin a unique
+// grid with zero givens (verified: even at max/full tiling, brute force
+// still found 2+ solutions). So killer here isn't zero-given like the
+// other categories -- it's a minimal-givens construction, same recipe as
+// anti-knight: start from a full grid (cages fixed throughout) and
+// greedily strip digit givens, keeping the cages' full-grid coverage as
+// the puzzle's main character.
 const KILLER_TITLES = ['Broken Boxes', 'No Man\'s Sums', 'Fault Lines'];
 for (let i = 0; i < 3; i++) {
-  const rand = mulberry32(22001 + i * 613);
-  let grid, cageCells, check;
-  let seed = 20001 + i * 97;
-  let attempts = 0;
-  do {
-    attempts++;
-    grid = freshGrid(seed); seed += 89;
-    cageCells = randomCageTiling(mulberry32(22001 + i * 613 + attempts * 31));
-    const killerCages = cageCells.map(cells => ({ sum: cells.reduce((s, [r,c]) => s + grid[r][c], 0), region: cells.map(([row,col]) => ({ row, col })) }));
-    check = checkSolvable({ gridSize: 9, fixedNumbers: [], killerCages });
-  } while (!check.ok && attempts < 40);
-  if (!check.ok) throw new Error(`killer-${i}: no unique chain-free tiling found after ${attempts} attempts`);
-  console.log('killer', i, 'attempts:', attempts, 'cages:', cageCells.length, check.techniques);
+  const grid = freshGrid(20001 + i * 97);
+  const cageCells = randomCageTiling(mulberry32(22001 + i * 613));
+  const killerCages = cageCells.map(cells => ({ sum: cells.reduce((s, [r,c]) => s + grid[r][c], 0), region: cells.map(([row,col]) => ({ row, col })) }));
+  const fullGivens = [];
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) fullGivens.push({ position: { row: r, col: c }, value: grid[r][c] });
+  let final = minimizeField({ gridSize: 9, fixedNumbers: fullGivens, killerCages }, 'fixedNumbers', 23001 + i);
+  const check = checkSolvable(final);
+  if (!check.ok) throw new Error(`killer-${i}: minimized state isn't ok (shouldn't happen)`);
+  console.log('killer', i, 'cages:', cageCells.length, 'givens:', final.fixedNumbers.length, check.techniques);
   const cages = cageCells.map(cells => ({ cells, sum: cells.reduce((s, [r,c]) => s + grid[r][c], 0) }));
+  const givens = Array.from({ length: 9 }, () => Array(9).fill(0));
+  for (const fn of final.fixedNumbers) givens[fn.position.row][fn.position.col] = fn.value;
   assertOk(grid, { cages }, `killer-${i}`);
   entries.push({
     id: `killer-${i + 1}`,
     title: KILLER_TITLES[i],
-    blurb: `No givens — ${cages.length} irregular cages carry the whole grid.`,
-    givens: Array.from({ length: 9 }, () => Array(9).fill(0)),
+    blurb: `${final.fixedNumbers.length} givens plus ${cages.length} cages carrying the whole grid.`,
+    givens,
     solution: grid,
     cages,
     stars: starRating(check.techniques),
