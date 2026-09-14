@@ -54,7 +54,7 @@ function fmtGrid(grid, indent) {
   const padIn = '  '.repeat(indent + 1);
   return '[\n' + grid.map(row => padIn + '[' + row.join(', ') + ']').join(',\n') + '\n' + pad + ']';
 }
-const FIELD_ORDER = ['id', 'title', 'blurb', 'stars', 'givens', 'solution', 'cages', 'kropki', 'lines', 'arrows', 'antiKnight', 'sandwich', 'xv', 'variants'];
+const FIELD_ORDER = ['id', 'title', 'blurb', 'stars', 'givens', 'solution', 'cages', 'kropki', 'kropkiNegative', 'lines', 'arrows', 'antiKnight', 'sandwich', 'xv', 'littleKiller', 'variants'];
 function fmtEntry(entry) {
   const pad = '    ', padIn = '      ';
   let out = pad + '{\n';

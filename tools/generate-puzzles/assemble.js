@@ -36,8 +36,8 @@ const { findConflicts, findVariantConflicts } = sandbox.window.SudokuEngine;
 for (const p of all) {
   if (findConflicts(p.solution).size > 0) throw new Error(`${p.id}: classic conflicts on solution`);
   const constraints = {
-    cages: p.cages, kropki: p.kropki, lines: p.lines, arrows: p.arrows,
-    antiKnight: p.antiKnight, sandwich: p.sandwich, xv: p.xv,
+    cages: p.cages, kropki: p.kropki, kropkiNegative: p.kropkiNegative, lines: p.lines, arrows: p.arrows,
+    antiKnight: p.antiKnight, sandwich: p.sandwich, xv: p.xv, littleKiller: p.littleKiller,
   };
   const conflicts = findVariantConflicts(p.solution, constraints);
   if (conflicts.size > 0) throw new Error(`${p.id}: variant conflicts: ${[...conflicts]}`);
@@ -76,7 +76,7 @@ function fmtGrid(grid, indent) {
   return '[\n' + grid.map(row => padIn + '[' + row.join(', ') + ']').join(',\n') + '\n' + pad + ']';
 }
 // Field order for readability, matching the existing house style.
-const FIELD_ORDER = ['id', 'title', 'blurb', 'stars', 'givens', 'solution', 'cages', 'kropki', 'lines', 'arrows', 'antiKnight', 'sandwich', 'xv', 'variants'];
+const FIELD_ORDER = ['id', 'title', 'blurb', 'stars', 'givens', 'solution', 'cages', 'kropki', 'kropkiNegative', 'lines', 'arrows', 'antiKnight', 'sandwich', 'xv', 'littleKiller', 'variants'];
 function fmtEntry(entry) {
   const pad = '    ', padIn = '      ';
   let out = pad + '{\n';

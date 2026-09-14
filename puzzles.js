@@ -233,16 +233,71 @@
         "antiknight"
       ]
     },
+    {
+      id: "killer-blister",
+      title: "Killer Blister",
+      blurb: "By Rangsk, imported from the community. Uses little killer clues our solver-checker doesn’t support, so this one rests on the community’s own testing rather than our verification.",
+      stars: 8,
+      givens: [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ],
+      solution: [
+        [2, 4, 9, 5, 1, 6, 8, 3, 7],
+        [1, 8, 5, 3, 4, 7, 9, 6, 2],
+        [3, 7, 6, 9, 8, 2, 1, 5, 4],
+        [4, 2, 1, 6, 3, 9, 7, 8, 5],
+        [7, 5, 8, 4, 2, 1, 3, 9, 6],
+        [6, 9, 3, 8, 7, 5, 4, 2, 1],
+        [9, 1, 7, 2, 6, 8, 5, 4, 3],
+        [5, 6, 4, 7, 9, 3, 2, 1, 8],
+        [8, 3, 2, 1, 5, 4, 6, 7, 9]
+      ],
+      cages: [
+        { cells: [[2, 0], [3, 0]], sum: 7 },
+        { cells: [[3, 1], [3, 2]], sum: 3 },
+        { cells: [[4, 3], [4, 4], [4, 5]], sum: 7 },
+        { cells: [[5, 6], [5, 7], [5, 8], [6, 8]], sum: 10 },
+        { cells: [[1, 2], [2, 1], [2, 2]], sum: 18 },
+        { cells: [[5, 0], [6, 0], [7, 0]], sum: 20 },
+        { cells: [[6, 6], [6, 7], [7, 6], [7, 7]], sum: 12 },
+        { cells: [[0, 4], [1, 4], [2, 4], [3, 4]], sum: 16 },
+        { cells: [[5, 4], [5, 5], [6, 4], [6, 5], [7, 4], [7, 5]], sum: 38 },
+        { cells: [[7, 1], [7, 2], [7, 3]], sum: 17 },
+        { cells: [[0, 5], [0, 6], [0, 7], [1, 6]], sum: 26 },
+        { cells: [[2, 5], [2, 6], [2, 7], [2, 8]], sum: 12 }
+      ],
+      littleKiller: [
+        { cells: [[2, 0], [1, 1], [0, 2]], dir: [-1, 1], sum: 20 },
+        { cells: [[6, 8], [5, 7], [4, 6], [3, 5], [2, 4], [1, 3], [0, 2]], dir: [-1, -1], sum: 37 },
+        { cells: [[8, 3], [7, 2], [6, 1], [5, 0]], dir: [-1, -1], sum: 12 },
+        {
+          cells: [[8, 0], [7, 1], [6, 2], [5, 3], [4, 4], [3, 5], [2, 6], [1, 7], [0, 8]],
+          dir: [-1, 1],
+          sum: 54
+        }
+      ],
+      variants: [
+        "killer"
+      ]
+    },
 
     // ---- Kropki Dots ----
     {
       id: "kropki-1",
       title: "Black and White",
-      blurb: "No givens — 26 kropki dots are the only clues.",
+      blurb: "2 givens plus 26 kropki dots.",
       stars: 7,
       givens: [
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 6, 0, 0, 8, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -297,12 +352,12 @@
     {
       id: "kropki-2",
       title: "Ratio Lock",
-      blurb: "No givens — 28 kropki dots are the only clues.",
-      stars: 7,
+      blurb: "2 givens plus 28 kropki dots.",
+      stars: 6,
       givens: [
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [6, 0, 0, 0, 0, 4, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -358,10 +413,10 @@
     {
       id: "kropki-3",
       title: "Domino Logic",
-      blurb: "No givens — 29 kropki dots are the only clues.",
+      blurb: "2 givens plus 29 kropki dots.",
       stars: 7,
       givens: [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [4, 0, 0, 0, 3, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -724,16 +779,16 @@
     {
       id: "lines-1",
       title: "Rising Heat",
-      blurb: "No givens — featuring thermo, renban, arrow.",
-      stars: 7,
+      blurb: "2 givens — featuring thermo, renban, arrow.",
+      stars: 6,
       givens: [
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 5, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 5, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0]
       ],
@@ -793,7 +848,7 @@
     {
       id: "lines-2",
       title: "Straight and Narrow",
-      blurb: "No givens — featuring thermo, renban, arrow.",
+      blurb: "2 givens — featuring thermo, renban, arrow.",
       stars: 8,
       givens: [
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -801,7 +856,7 @@
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 4, 0, 0, 0, 0, 0, 0, 9],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -855,14 +910,14 @@
     {
       id: "lines-3",
       title: "Sum Into the Circle",
-      blurb: "No givens — featuring thermo, renban, arrow.",
+      blurb: "2 givens — featuring thermo, renban, arrow.",
       stars: 8,
       givens: [
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 9, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 4, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -911,6 +966,57 @@
         { circle: [4, 7], cells: [[3, 7], [2, 7]] },
         { circle: [5, 3], cells: [[6, 3], [7, 3]] },
         { circle: [8, 1], cells: [[8, 2], [8, 3]] }
+      ],
+      variants: [
+        "lines"
+      ]
+    },
+    {
+      id: "orbit",
+      title: "Orbit",
+      blurb: "By Qodec, imported from the community. Uses little killer clues our solver-checker doesn’t support, so this one rests on the community’s own testing rather than our verification.",
+      stars: 8,
+      givens: [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ],
+      solution: [
+        [6, 5, 4, 8, 1, 7, 3, 2, 9],
+        [1, 8, 9, 2, 6, 3, 4, 7, 5],
+        [2, 3, 7, 5, 4, 9, 6, 8, 1],
+        [9, 2, 5, 4, 7, 1, 8, 3, 6],
+        [4, 7, 3, 6, 5, 8, 1, 9, 2],
+        [8, 1, 6, 3, 9, 2, 5, 4, 7],
+        [3, 6, 8, 7, 2, 5, 9, 1, 4],
+        [5, 9, 2, 1, 8, 4, 7, 6, 3],
+        [7, 4, 1, 9, 3, 6, 2, 5, 8]
+      ],
+      arrows: [
+        { circle: [2, 6], cells: [[1, 5], [0, 4], [1, 3]] },
+        { circle: [2, 2], cells: [[3, 1], [4, 0], [5, 1]] },
+        { circle: [6, 2], cells: [[7, 3], [8, 4], [7, 5]] },
+        { circle: [6, 6], cells: [[5, 7], [4, 8], [3, 7]] },
+        { circle: [4, 6], cells: [[3, 5]] },
+        { circle: [2, 4], cells: [[3, 3]] },
+        { circle: [4, 2], cells: [[5, 3]] },
+        { circle: [6, 4], cells: [[5, 5]] }
+      ],
+      littleKiller: [
+        { cells: [[8, 7], [7, 8]], dir: [-1, 1], sum: 8 },
+        { cells: [[1, 8], [0, 7]], dir: [-1, -1], sum: 7 },
+        { cells: [[0, 1], [1, 0]], dir: [1, -1], sum: 6 },
+        { cells: [[7, 0], [8, 1]], dir: [1, 1], sum: 9 },
+        { cells: [[0, 5], [1, 4], [2, 3], [3, 2], [4, 1], [5, 0]], dir: [1, -1], sum: 38 },
+        { cells: [[5, 8], [4, 7], [3, 6], [2, 5], [1, 4], [0, 3]], dir: [-1, -1], sum: 47 },
+        { cells: [[8, 3], [7, 4], [6, 5], [5, 6], [4, 7], [3, 8]], dir: [-1, 1], sum: 42 },
+        { cells: [[3, 0], [4, 1], [5, 2], [6, 3], [7, 4], [8, 5]], dir: [1, 1], sum: 43 }
       ],
       variants: [
         "lines"

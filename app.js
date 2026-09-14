@@ -674,8 +674,20 @@
   // position is one half-cell further out, in the same direction reversed.
   const LK_ARROWS = { "1,1": "↘", "1,-1": "↙", "-1,1": "↗", "-1,-1": "↖" };
   const littleKillerOverlayEl = document.getElementById("littleKillerOverlay");
+  const boardWrapEl = document.querySelector(".board-wrap");
+  // Positions a clue a fixed small distance (0.32 of a cell) outside the
+  // board's own 0%/100% edge, rather than centered in a virtual extra
+  // cell -- keeps it close to the grid without needing a full cell's
+  // worth of reserved space on every side.
+  function outsidePercent(idx) {
+    if (idx < 0) return ((idx + (1 - 0.32)) / 9) * 100;
+    if (idx > 8) return ((idx + 0.32) / 9) * 100;
+    return ((idx + 0.5) / 9) * 100;
+  }
   function renderLittleKillerClues() {
     littleKillerOverlayEl.innerHTML = "";
+    const hasClues = (state.littleKiller || []).length > 0;
+    boardWrapEl.classList.toggle("has-little-killer", hasClues);
     for (const clue of state.littleKiller || []) {
       const [dr, dc] = clue.dir;
       const [entryRow, entryCol] = clue.cells[0];
@@ -683,8 +695,8 @@
       const clueCol = entryCol - dc;
       const el = document.createElement("div");
       el.className = "little-killer-clue";
-      el.style.left = `${((clueCol + 0.5) / 9) * 100}%`;
-      el.style.top = `${((clueRow + 0.5) / 9) * 100}%`;
+      el.style.left = `${outsidePercent(clueCol)}%`;
+      el.style.top = `${outsidePercent(clueRow)}%`;
       const arrow = document.createElement("span");
       arrow.className = "lk-arrow";
       arrow.textContent = LK_ARROWS[`${dr},${dc}`] || "";
