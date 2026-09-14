@@ -184,6 +184,33 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+/* Little killer clues sit just outside the board on whichever edge/corner
+   their diagonal starts from. Rendered as a sibling of .board (not a
+   child) sharing its exact grid area, since .board itself clips overflow
+   for its own decorations and a clue label needs to sit outside that box. */
+.little-killer-overlay {
+  grid-column: 2;
+  grid-row: 2;
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.little-killer-clue {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.little-killer-clue .lk-arrow { font-size: 10px; line-height: 1; }
+
 .board-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);

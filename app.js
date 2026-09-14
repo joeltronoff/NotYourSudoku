@@ -7,11 +7,13 @@
     const variant = findVariantConflicts(state.grid, {
       cages: state.cages,
       kropki: state.kropki,
+      kropkiNegative: state.kropkiNegative,
       lines: state.lines,
       arrows: state.arrows,
       antiKnight: state.antiKnight,
       sandwich: state.sandwich,
       xv: state.xv,
+      littleKiller: state.littleKiller,
     });
     return new Set([...classic, ...variant]);
   }
@@ -255,11 +257,13 @@
       solution,
       cages: [],
       kropki: [],
+      kropkiNegative: false,
       lines: [],
       arrows: [],
       antiKnight: false,
       sandwich: null,
       xv: [],
+      littleKiller: [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -280,6 +284,7 @@
     renderConstraintOverlays();
     render();
     renderSandwichClues();
+    renderLittleKillerClues();
     updateHintAvailability();
     showGame();
   }
@@ -296,11 +301,13 @@
       solution: entry.solution,
       cages: entry.cages || [],
       kropki: entry.kropki || [],
+      kropkiNegative: entry.kropkiNegative || false,
       lines: entry.lines || [],
       arrows: entry.arrows || [],
       antiKnight: entry.antiKnight || false,
       sandwich: entry.sandwich || null,
       xv: entry.xv || [],
+      littleKiller: entry.littleKiller || [],
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -321,6 +328,7 @@
     renderConstraintOverlays();
     render();
     renderSandwichClues();
+    renderLittleKillerClues();
     updateHintAvailability();
     showGame();
   }
@@ -352,11 +360,13 @@
       solution: state.solution,
       cages: state.cages,
       kropki: state.kropki,
+      kropkiNegative: state.kropkiNegative,
       lines: state.lines,
       arrows: state.arrows,
       antiKnight: state.antiKnight,
       sandwich: state.sandwich,
       xv: state.xv,
+      littleKiller: state.littleKiller,
       cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
       centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
       colors: state.colors,
@@ -381,11 +391,13 @@
         solution: data.solution,
         cages: data.cages || [],
         kropki: data.kropki || [],
+        kropkiNegative: data.kropkiNegative || false,
         lines: data.lines || [],
         arrows: data.arrows || [],
         antiKnight: data.antiKnight || false,
         sandwich: data.sandwich || null,
         xv: data.xv || [],
+        littleKiller: data.littleKiller || [],
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
@@ -656,6 +668,34 @@
     }
   }
 
+  // Little killer clues sit just outside whichever edge/corner their
+  // diagonal starts from. Each clue stores the in-grid diagonal path
+  // (cells, entry-to-exit) plus the direction of travel; the label's own
+  // position is one half-cell further out, in the same direction reversed.
+  const LK_ARROWS = { "1,1": "↘", "1,-1": "↙", "-1,1": "↗", "-1,-1": "↖" };
+  const littleKillerOverlayEl = document.getElementById("littleKillerOverlay");
+  function renderLittleKillerClues() {
+    littleKillerOverlayEl.innerHTML = "";
+    for (const clue of state.littleKiller || []) {
+      const [dr, dc] = clue.dir;
+      const [entryRow, entryCol] = clue.cells[0];
+      const clueRow = entryRow - dr;
+      const clueCol = entryCol - dc;
+      const el = document.createElement("div");
+      el.className = "little-killer-clue";
+      el.style.left = `${((clueCol + 0.5) / 9) * 100}%`;
+      el.style.top = `${((clueRow + 0.5) / 9) * 100}%`;
+      const arrow = document.createElement("span");
+      arrow.className = "lk-arrow";
+      arrow.textContent = LK_ARROWS[`${dr},${dc}`] || "";
+      const sum = document.createElement("span");
+      sum.textContent = clue.sum;
+      el.appendChild(arrow);
+      el.appendChild(sum);
+      littleKillerOverlayEl.appendChild(el);
+    }
+  }
+
   // Lines/arrows are drawn per-cell (inside each cell's own DOM node,
   // ahead of its digit) rather than as one global overlay. A single
   // overlay sitting above #boardGrid paints above every cell's entire
@@ -909,7 +949,8 @@
       || (state.arrows && state.arrows.length > 0)
       || !!state.antiKnight
       || !!state.sandwich
-      || (state.xv && state.xv.length > 0);
+      || (state.xv && state.xv.length > 0)
+      || (state.littleKiller && state.littleKiller.length > 0);
   }
 
   function updateHintAvailability() {
@@ -1120,6 +1161,7 @@
     renderConstraintOverlays();
     render();
     renderSandwichClues();
+    renderLittleKillerClues();
     updateHintAvailability();
   }
   showMenu();
