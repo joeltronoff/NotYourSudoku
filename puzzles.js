@@ -1022,6 +1022,52 @@
         "lines"
       ]
     },
+    {
+      id: "compass",
+      title: "Compass",
+      blurb: "By Jonas Gleim, imported from GM Puzzles (a 2022 Sunday Stumper, their top difficulty tier). No givens — four corner arrows and six thermometers, arranged so the thermometers trace N/S/E/W around the center.",
+      stars: 10,
+      givens: [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ],
+      solution: [
+        [7, 1, 6, 4, 9, 8, 5, 2, 3],
+        [2, 8, 4, 3, 5, 7, 9, 6, 1],
+        [3, 9, 5, 2, 1, 6, 4, 7, 8],
+        [6, 7, 8, 9, 3, 5, 1, 4, 2],
+        [9, 2, 3, 8, 4, 1, 7, 5, 6],
+        [4, 5, 1, 6, 7, 2, 3, 8, 9],
+        [1, 4, 2, 5, 8, 9, 6, 3, 7],
+        [5, 6, 7, 1, 2, 3, 8, 9, 4],
+        [8, 3, 9, 7, 6, 4, 2, 1, 5]
+      ],
+      lines: [
+        { kind: "thermo", cells: [[2, 3], [1, 3], [0, 3], [1, 4], [2, 5], [1, 5], [0, 5]] },
+        { kind: "thermo", cells: [[5, 2], [4, 1], [5, 0], [4, 0]] },
+        { kind: "thermo", cells: [[5, 2], [4, 2]] },
+        { kind: "thermo", cells: [[3, 8], [3, 7], [4, 7], [4, 8], [5, 7], [5, 8]] },
+        { kind: "thermo", cells: [[7, 3], [7, 4], [7, 5], [8, 5], [8, 4], [8, 3]] },
+        { kind: "thermo", cells: [[7, 3], [6, 3], [6, 4], [6, 5]] }
+      ],
+      arrows: [
+        { circle: [0, 2], cells: [[0, 1], [1, 0], [2, 0]] },
+        { circle: [2, 8], cells: [[1, 8], [0, 7], [0, 6]] },
+        { circle: [8, 2], cells: [[8, 1], [7, 0], [6, 0]] },
+        { circle: [6, 8], cells: [[7, 8], [8, 7], [8, 6]] },
+        { circle: [5, 4], cells: [[4, 4], [3, 4]] }
+      ],
+      variants: [
+        "lines"
+      ]
+    },
 
     // ---- Anti-Knight ----
     {
