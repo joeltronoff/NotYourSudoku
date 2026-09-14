@@ -403,6 +403,49 @@ function findVariantConflicts(grid, constraints) {
     }
   }
 
+  // Negative kropki: every adjacent pair WITHOUT a dot must be confirmed
+  // neither consecutive nor a 2:1 ratio (absence of a dot is itself
+  // information, unlike the default "no dot = no info" convention above).
+  if (constraints.kropkiNegative) {
+    const dotted = new Set();
+    for (const dot of constraints.kropki || []) {
+      dotted.add(`${dot.a[0]},${dot.a[1]}-${dot.b[0]},${dot.b[1]}`);
+      dotted.add(`${dot.b[0]},${dot.b[1]}-${dot.a[0]},${dot.a[1]}`);
+    }
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const av = grid[r][c];
+        if (av === 0) continue;
+        const neighbors = [[r, c + 1], [r + 1, c]];
+        for (const [nr, nc] of neighbors) {
+          if (nr >= SIZE || nc >= SIZE) continue;
+          const bv = grid[nr][nc];
+          if (bv === 0) continue;
+          if (dotted.has(`${r},${c}-${nr},${nc}`)) continue;
+          const isConsecutive = Math.abs(av - bv) === 1;
+          const isDouble = av === bv * 2 || bv === av * 2;
+          if (isConsecutive || isDouble) {
+            conflicts.add(`${r},${c}`);
+            conflicts.add(`${nr},${nc}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.littleKiller) {
+    for (const clue of constraints.littleKiller) {
+      const filled = clue.cells.filter(([r, c]) => grid[r][c] !== 0);
+      const sum = filled.reduce((s, [r, c]) => s + grid[r][c], 0);
+      const allFilled = filled.length === clue.cells.length;
+      const over = sum > clue.sum;
+      const wrongTotal = allFilled && sum !== clue.sum;
+      if (over || wrongTotal) {
+        for (const [r, c] of filled) conflicts.add(`${r},${c}`);
+      }
+    }
+  }
+
   if (constraints.lines) {
     for (const line of constraints.lines) {
       const cells = line.cells;

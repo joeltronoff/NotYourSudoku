@@ -93,6 +93,45 @@ function minimizeField(base, field, seed) {
   return { ...base, [field]: items };
 }
 
+// A fully zero-given puzzle is elegant but can feel like staring at a
+// blank grid with no way in -- there's no cell to even start reasoning
+// about. Revealing a couple of well-connected cells (touched by the most
+// decorations) as givens gives a genuine foothold without meaningfully
+// changing the puzzle's character, since those are exactly the cells a
+// solver would pin down early anyway.
+function pickAnchorGivens(grid, touchCounts, count) {
+  const cells = [];
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) cells.push([r, c, touchCounts[r][c] || 0]);
+  cells.sort((a, b) => b[2] - a[2]);
+  // Spread picks across different boxes so the foothold isn't clustered
+  // in one corner.
+  const usedBoxes = new Set();
+  const picked = [];
+  for (const [r, c, touch] of cells) {
+    if (touch === 0) break;
+    const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+    if (usedBoxes.has(box)) continue;
+    picked.push([r, c]);
+    usedBoxes.add(box);
+    if (picked.length >= count) break;
+  }
+  return picked;
+}
+function computeKropkiTouchCounts(kropkiDots) {
+  const t = Array.from({ length: 9 }, () => Array(9).fill(0));
+  for (const d of kropkiDots) { t[d.cell1.row][d.cell1.col]++; t[d.cell2.row][d.cell2.col]++; }
+  return t;
+}
+function computeLineTouchCounts(lineArrays) {
+  const t = Array.from({ length: 9 }, () => Array(9).fill(0));
+  for (const lines of lineArrays) for (const line of lines) for (const cell of line) t[cell.row][cell.col]++;
+  return t;
+}
+function applyAnchorGivens(grid, base, anchorCells) {
+  const fixedNumbers = anchorCells.map(([r, c]) => ({ position: { row: r, col: c }, value: grid[r][c] }));
+  return { ...base, fixedNumbers };
+}
+
 // ---- Grid generation (mulberry32-seeded, genuinely independent shuffles) ----
 const BASE = [
   [5,3,4,6,7,8,9,1,2],[6,7,2,1,9,5,3,4,8],[1,9,8,3,4,2,5,6,7],
@@ -327,15 +366,24 @@ for (let i = 0; i < 3; i++) {
   } while (!probe.ok);
   let final = minimizeField({ gridSize: 9, fixedNumbers: [], kropkiDots }, 'kropkiDots', 5 + i);
   final = minimizeField(final, 'kropkiDots', 500 + i); // second pass, different order
+
+  // Reveal 2 well-connected cells as anchor givens for an intuitive entry
+  // point, then re-verify (adding information can only help, never hurt
+  // solvability, but the star rating may drop a touch).
+  const anchors = pickAnchorGivens(grid, computeKropkiTouchCounts(final.kropkiDots), 2);
+  final = applyAnchorGivens(grid, final, anchors);
   const check = checkSolvable(final);
-  console.log('kropki', i, 'dots:', final.kropkiDots.length, check.techniques);
+  if (!check.ok) throw new Error(`kropki-${i}: anchor givens broke solvability (shouldn't happen)`);
+  console.log('kropki', i, 'dots:', final.kropkiDots.length, 'anchors:', anchors.length, check.techniques);
   const kropki = final.kropkiDots.map(d => ({ a: [d.cell1.row, d.cell1.col], b: [d.cell2.row, d.cell2.col], kind: d.dotType === 'Consecutive' ? 'white' : 'black' }));
+  const givens = Array.from({ length: 9 }, () => Array(9).fill(0));
+  for (const [r, c] of anchors) givens[r][c] = grid[r][c];
   assertOk(grid, { kropki }, `kropki-${i}`);
   entries.push({
     id: `kropki-${i + 1}`,
     title: KROPKI_TITLES[i],
-    blurb: `No givens — ${kropki.length} kropki dots are the only clues.`,
-    givens: Array.from({ length: 9 }, () => Array(9).fill(0)),
+    blurb: `${anchors.length} givens plus ${kropki.length} kropki dots.`,
+    givens,
     solution: grid,
     kropki,
     stars: starRating(check.techniques),
@@ -389,21 +437,30 @@ for (let i = 0; i < 3; i++) {
   final = minimizeField(final, 'renbans', 700 + i);
   final = minimizeField(final, 'arrows', 7000 + i);
   final = minimizeField(final, 'thermos', 70000 + i);
+
+  // Anchor givens for an intuitive entry point (see pickAnchorGivens).
+  const arrowCellGroups = final.arrows.map(a => [a.circleCells[0], ...a.arrowCells]);
+  const touchCounts = computeLineTouchCounts([final.thermos, final.renbans, arrowCellGroups]);
+  const anchors = pickAnchorGivens(grid, touchCounts, 2);
+  final = applyAnchorGivens(grid, final, anchors);
   const check = checkSolvable(final);
-  console.log('lines', i, 'thermos:', final.thermos.length, 'renbans:', final.renbans.length, 'arrows:', final.arrows.length, check.techniques);
+  if (!check.ok) throw new Error(`lines-${i}: anchor givens broke solvability (shouldn't happen)`);
+  console.log('lines', i, 'thermos:', final.thermos.length, 'renbans:', final.renbans.length, 'arrows:', final.arrows.length, 'anchors:', anchors.length, check.techniques);
   const lines = [
     ...final.thermos.map(cells => ({ kind: 'thermo', cells: cellsFromLine(cells) })),
     ...final.renbans.map(cells => ({ kind: 'renban', cells: cellsFromLine(cells) })),
   ];
   const arrowsOut = final.arrows.map(a => ({ circle: [a.circleCells[0].row, a.circleCells[0].col], cells: cellsFromLine(a.arrowCells) }));
   function cellsFromLine(line) { return line.map(p => [p.row, p.col]); }
+  const givens = Array.from({ length: 9 }, () => Array(9).fill(0));
+  for (const [r, c] of anchors) givens[r][c] = grid[r][c];
   assertOk(grid, { lines, arrows: arrowsOut }, `lines-${i}`);
   const kinds = [...new Set(lines.map(l => l.kind))].concat(arrowsOut.length ? ['arrow'] : []);
   entries.push({
     id: `lines-${i + 1}`,
     title: LINES_TITLES[i],
-    blurb: `No givens — featuring ${kinds.join(', ')}.`,
-    givens: Array.from({ length: 9 }, () => Array(9).fill(0)),
+    blurb: `${anchors.length} givens — featuring ${kinds.join(', ')}.`,
+    givens,
     solution: grid,
     lines,
     arrows: arrowsOut,

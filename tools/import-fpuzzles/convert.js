@@ -19,7 +19,8 @@ const UNSUPPORTED_FIELDS = [
   'rowindexer', 'columnindexer', 'boxindexer', 'xsum', 'skyscraper',
   'entropicline', 'modularline', 'zipperline', 'nabner', 'doublearrow',
   'lockout', 'disjointgroups', 'fogofwar', 'foglight', 'cage',
-  'diagonal+', 'diagonal-', 'antiking', 'regionsumline',
+  'diagonal+', 'diagonal-', 'antiking', 'regionsumline', 'odd', 'even',
+  'nonconsecutive', 'slowthermometer',
 ];
 
 function extractDataString(input) {
@@ -148,6 +149,23 @@ function convert(puzzle, idOverride) {
     return { a, b, kind: pair.value || 'X' };
   }).filter(p => p.kind === 'X' || p.kind === 'V');
 
+  const LK_DIR = { UR: [-1, 1], UL: [-1, -1], DR: [1, 1], DL: [1, -1] };
+  const littleKiller = (puzzle.littlekillersum || []).map(clue => {
+    const dir = LK_DIR[clue.direction];
+    if (!dir) { warnings.push(`Little killer clue with unrecognized direction ${clue.direction}`); return null; }
+    return { cells: clue.cells.map(parseCell), dir, sum: parseInt(clue.value, 10) };
+  }).filter(Boolean);
+
+  // "negative" lists which dot types (difference/ratio) have the full
+  // negative constraint active. Our engine only has one on/off switch for
+  // both, so a puzzle negative on only one type is a real fidelity gap —
+  // flagged, not silently treated as fully negative.
+  const negativeTypes = puzzle.negative || [];
+  const kropkiNegative = negativeTypes.length > 0;
+  if (negativeTypes.length === 1) {
+    warnings.push(`Puzzle has negative constraint on only "${negativeTypes[0]}" dots, but this engine's kropkiNegative applies to both — verify the other type's absence doesn't matter here.`);
+  }
+
   let variant = 'lines';
   if (cages.length > 0) variant = 'killer';
   else if (kropki.length > 0 && lines.length === 0 && arrows.length === 0) variant = 'kropki';
@@ -165,11 +183,13 @@ function convert(puzzle, idOverride) {
   };
   if (cages.length > 0) entry.cages = cages;
   if (kropki.length > 0) entry.kropki = kropki;
+  if (kropkiNegative) entry.kropkiNegative = true;
   if (lines.length > 0) entry.lines = lines;
   if (arrows.length > 0) entry.arrows = arrows;
   if (antiKnight) entry.antiKnight = true;
   if (sandwich) entry.sandwich = sandwich;
   if (xv.length > 0) entry.xv = xv;
+  if (littleKiller.length > 0) entry.littleKiller = littleKiller;
 
   return { entry, warnings, errors: [] };
 }

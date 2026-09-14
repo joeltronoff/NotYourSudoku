@@ -172,7 +172,7 @@ button {
 .sandwich-wrap.has-clues .sandwich-row-clues {
   display: grid;
 }
-.sandwich-wrap .board {
+.sandwich-wrap .board-anchor {
   grid-column: 2;
   grid-row: 2;
 }
@@ -183,6 +183,40 @@ button {
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
+
+/* Little killer clues sit just outside the board on whichever edge/corner
+   their diagonal starts from. .board itself clips overflow for its own
+   decorations, so the overlay is a plain sibling wrapped by .board-anchor
+   (a normal, non-grid position:relative box that sizes to .board exactly
+   since it's the only content contributing to layout) rather than a grid
+   item -- relying on "grid area as containing block for an absolutely
+   positioned grid item" did not behave consistently. */
+.board-anchor { position: relative; }
+.little-killer-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+/* Reserves real layout space (not just visual overflow room) so clue
+   labels sitting outside the board don't collide with neighboring UI --
+   .board-wrap centers its content via flex, so padding here just shrinks
+   the centering box rather than requiring a separate grid track. */
+.board-wrap.has-little-killer { padding: 28px; }
+.little-killer-clue {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.little-killer-clue .lk-arrow { font-size: 10px; line-height: 1; }
 
 .board-grid {
   display: grid;
