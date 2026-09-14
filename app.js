@@ -359,6 +359,7 @@
     startTimer();
     saveState();
     renderConstraintOverlays();
+    renderRulesPanel();
     render();
     renderSandwichClues();
     renderLittleKillerClues();
@@ -406,6 +407,7 @@
     startTimer();
     saveState();
     renderConstraintOverlays();
+    renderRulesPanel();
     render();
     renderSandwichClues();
     renderLittleKillerClues();
@@ -1092,6 +1094,81 @@
       || !!state.fog;
   }
 
+  // ---------------- Rules panel ----------------
+  // Builds the specific rule list for whatever's actually active in the
+  // loaded puzzle -- e.g. a puzzle with only thermometers doesn't mention
+  // whispers or renban, and a plain classic puzzle shows nothing at all.
+  function computeActiveRules() {
+    const rules = [];
+    if (state.cages && state.cages.length > 0) {
+      rules.push("Digits in a dashed cage sum to the small number shown, with no digit repeated inside the cage.");
+    }
+    if (state.kropki && state.kropki.length > 0) {
+      if (state.kropki.some(d => d.kind === "white")) {
+        rules.push("A white dot between two cells means they're consecutive digits.");
+      }
+      if (state.kropki.some(d => d.kind === "black")) {
+        rules.push("A black dot between two cells means one digit is double the other.");
+      }
+    }
+    if (state.kropkiNegative) {
+      rules.push("Adjacent cells with no dot between them are confirmed not consecutive and not in a 2:1 ratio.");
+    }
+    if (state.lines && state.lines.length > 0) {
+      if (state.lines.some(l => l.kind === "thermo")) {
+        rules.push("Digits increase from the bulb (circle end) to the tip along each thermometer.");
+      }
+      if (state.lines.some(l => l.kind === "whispers")) {
+        rules.push("Neighboring digits on a green line differ by 5 or more.");
+      }
+      if (state.lines.some(l => l.kind === "renban")) {
+        rules.push("Digits on a purple line form a consecutive set, in any order, with no repeats.");
+      }
+      if (state.lines.some(l => l.kind === "palindrome")) {
+        rules.push("Digits on a line read the same from either end.");
+      }
+    }
+    if (state.arrows && state.arrows.length > 0) {
+      rules.push("Digits along an arrow's shaft sum to the digit in its circle.");
+    }
+    if (state.antiKnight) {
+      rules.push("Two cells a knight's-move apart can't hold the same digit.");
+    }
+    if (state.sandwich) {
+      rules.push("Clues outside the grid give the sum of the digits sandwiched between the 1 and the 9 in that row or column.");
+    }
+    if (state.xv && state.xv.length > 0) {
+      rules.push("Cells joined by a small X sum to 10; joined by a V, they sum to 5.");
+    }
+    if (state.littleKiller && state.littleKiller.length > 0) {
+      rules.push("Diagonal clues outside the grid give the sum of the digits along that diagonal, in the direction of the arrow.");
+    }
+    if (state.diagonals) {
+      rules.push("Both long diagonals also contain every digit 1–9, same as a row.");
+    }
+    if (state.oddEven && state.oddEven.length > 0) {
+      rules.push("Shaded circles must hold an odd digit; shaded squares must hold an even digit.");
+    }
+    if (state.fog) {
+      rules.push("The grid starts hidden under fog. Fill a cell correctly and the fog clears around it.");
+    }
+    return rules;
+  }
+
+  const rulesPanelEl = document.getElementById("rulesPanel");
+  function renderRulesPanel() {
+    const rules = computeActiveRules();
+    if (rules.length === 0) {
+      rulesPanelEl.hidden = true;
+      rulesPanelEl.innerHTML = "";
+      return;
+    }
+    rulesPanelEl.innerHTML = `<span class="rules-panel-title">Rules for this puzzle</span>` +
+      `<ul>${rules.map(r => `<li>${r}</li>`).join("")}</ul>`;
+    // Never show alongside the killer calculator -- they share one slot.
+    rulesPanelEl.hidden = !killerCalcEl.hidden;
+  }
+
   function updateHintAvailability() {
     hintBtn.classList.toggle("disabled", isVariantActive());
   }
@@ -1227,6 +1304,9 @@
     const opening = killerCalcEl.hidden;
     killerCalcEl.hidden = !opening;
     killerCalcBtn.classList.toggle("on", opening);
+    // The calculator and the rules panel share one slot — opening the
+    // calculator hides the rules, closing it brings them back.
+    renderRulesPanel();
     // Only (re)compute on first open — reopening the panel without
     // changing cells/sum should keep whatever's been crossed out.
     if (opening && !killerCalcCombosEl.children.length) renderKillerCalc();
@@ -1298,6 +1378,7 @@
   // but the board itself only becomes visible once something is chosen.
   if (loadState()) {
     renderConstraintOverlays();
+    renderRulesPanel();
     render();
     renderSandwichClues();
     renderLittleKillerClues();
