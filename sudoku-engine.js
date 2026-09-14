@@ -589,6 +589,34 @@ function findVariantConflicts(grid, constraints) {
     }
   }
 
+  if (constraints.diagonals) {
+    const diag1 = Array.from({ length: 9 }, (_, i) => [i, i]);
+    const diag2 = Array.from({ length: 9 }, (_, i) => [i, 8 - i]);
+    for (const diag of [diag1, diag2]) {
+      const seen = new Map();
+      for (const [r, c] of diag) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        if (seen.has(v)) {
+          conflicts.add(`${r},${c}`);
+          const [pr, pc] = seen.get(v);
+          conflicts.add(`${pr},${pc}`);
+        }
+        seen.set(v, [r, c]);
+      }
+    }
+  }
+
+  if (constraints.oddEven) {
+    for (const clue of constraints.oddEven) {
+      const [r, c] = clue.cell;
+      const v = grid[r][c];
+      if (v === 0) continue;
+      const isOdd = v % 2 === 1;
+      if ((clue.parity === "odd") !== isOdd) conflicts.add(`${r},${c}`);
+    }
+  }
+
   return conflicts;
 }
 

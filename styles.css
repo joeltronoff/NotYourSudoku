@@ -13,6 +13,8 @@
   --user-entry: #2C4A6E;
   --grid-line: #D9D6CC;
   --grid-line-strong: #2B2A27;
+  --fog: #BFB8A6;
+  --fog-dark: #A79E88;
   --line-thin: 1px;
   --line-thick: 2.5px;
   --radius: 10px;
@@ -284,6 +286,9 @@ button {
 .arrow-line { stroke: var(--ink-soft); stroke-width: 0.5; }
 .arrow-head { fill: none; stroke: var(--ink-soft); stroke-width: 0.5; stroke-linecap: round; stroke-linejoin: round; }
 .arrow-circle { fill: none; stroke: var(--ink-soft); stroke-width: 0.6; }
+.diagonal-line { stroke: var(--accent-soft); stroke-width: 3.2; stroke-linecap: butt; }
+.oddeven-odd { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; }
+.oddeven-even { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; rx: 0.8; }
 
 .cell {
   display: flex;
@@ -348,6 +353,18 @@ button {
 .cell.selected::before { background: rgba(204, 120, 92, 0.38); }
 .cell.conflict::before { background: rgba(192, 57, 43, 0.24); }
 .cell.hint-target { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+
+/* Fog of War: an opaque cover over anything not yet revealed. Layered
+   radial gradients give it a soft, uneven "cloud" read instead of a flat
+   slab of color; it fully overrides any cell shading underneath since a
+   cell can't have been color-tagged before it was ever seen. */
+.cell.fogged {
+  background:
+    radial-gradient(circle at 28% 32%, rgba(255, 255, 255, 0.16), transparent 55%),
+    radial-gradient(circle at 72% 68%, rgba(0, 0, 0, 0.08), transparent 60%),
+    var(--fog);
+}
+.cell.fogged::before { background: transparent; }
 
 .notes-grid {
   position: absolute;
