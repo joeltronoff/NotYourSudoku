@@ -786,6 +786,66 @@
         "lines"
       ]
     },
+    {
+      id: "kropki-4",
+      title: "Full Disclosure",
+      blurb: "By Richard Stolk (\"Puzzle #3\"). No givens, Full Kropki — every dot is shown, so any two adjacent cells with no dot between them are confirmed neither consecutive nor in a 2:1 ratio.",
+      stars: 9,
+      givens: [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0]
+      ],
+      solution: [
+        [6, 5, 2, 9, 3, 8, 4, 1, 7],
+        [9, 3, 7, 4, 5, 1, 6, 8, 2],
+        [8, 1, 4, 7, 2, 6, 9, 3, 5],
+        [4, 2, 1, 6, 9, 3, 5, 7, 8],
+        [7, 9, 6, 8, 1, 5, 2, 4, 3],
+        [5, 8, 3, 2, 4, 7, 1, 6, 9],
+        [2, 6, 8, 5, 7, 4, 3, 9, 1],
+        [3, 7, 5, 1, 6, 9, 8, 2, 4],
+        [1, 4, 9, 3, 8, 2, 7, 5, 6]
+      ],
+      kropki: [
+        { a: [0, 0], b: [0, 1], kind: "white" },
+        { a: [0, 5], b: [0, 6], kind: "black" },
+        { a: [1, 3], b: [1, 4], kind: "white" },
+        { a: [3, 0], b: [3, 1], kind: "black" },
+        { a: [3, 1], b: [3, 2], kind: "white" },
+        { a: [3, 7], b: [3, 8], kind: "white" },
+        { a: [4, 6], b: [4, 7], kind: "black" },
+        { a: [4, 7], b: [4, 8], kind: "white" },
+        { a: [5, 2], b: [5, 3], kind: "white" },
+        { a: [5, 3], b: [5, 4], kind: "black" },
+        { a: [6, 5], b: [6, 6], kind: "white" },
+        { a: [7, 5], b: [7, 6], kind: "white" },
+        { a: [7, 7], b: [7, 8], kind: "black" },
+        { a: [8, 7], b: [8, 8], kind: "white" },
+        { a: [1, 0], b: [2, 0], kind: "white" },
+        { a: [2, 0], b: [3, 0], kind: "black" },
+        { a: [2, 1], b: [3, 1], kind: "black" },
+        { a: [2, 3], b: [3, 3], kind: "white" },
+        { a: [2, 5], b: [3, 5], kind: "black" },
+        { a: [4, 1], b: [5, 1], kind: "white" },
+        { a: [4, 2], b: [5, 2], kind: "black" },
+        { a: [4, 6], b: [5, 6], kind: "white" },
+        { a: [6, 0], b: [7, 0], kind: "white" },
+        { a: [6, 1], b: [7, 1], kind: "white" },
+        { a: [6, 4], b: [7, 4], kind: "white" },
+        { a: [7, 6], b: [8, 6], kind: "white" }
+      ],
+      kropkiNegative: true,
+      variants: [
+        "kropki"
+      ]
+    },
 
     // ---- Lines & Arrows ----
     {
