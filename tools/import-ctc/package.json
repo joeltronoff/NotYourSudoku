@@ -1,0 +1,9 @@
+{
+  "name": "import-ctc",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bulk-imports Cracking the Cryptic featured puzzles (catalogue -> YouTube description -> SudokuPad) into puzzles.js entries, verified by solver.",
+  "dependencies": {
+    "lz-string": "^1.5.0"
+  }
+}
