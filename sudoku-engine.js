@@ -589,10 +589,15 @@ function findVariantConflicts(grid, constraints) {
     }
   }
 
+  // diagonals: true for both long diagonals, or "main" (top-left to
+  // bottom-right) / "anti" (top-right to bottom-left) for just one.
   if (constraints.diagonals) {
     const diag1 = Array.from({ length: 9 }, (_, i) => [i, i]);
     const diag2 = Array.from({ length: 9 }, (_, i) => [i, 8 - i]);
-    for (const diag of [diag1, diag2]) {
+    const marked = [];
+    if (constraints.diagonals !== "anti") marked.push(diag1);
+    if (constraints.diagonals !== "main") marked.push(diag2);
+    for (const diag of marked) {
       const seen = new Map();
       for (const [r, c] of diag) {
         const v = grid[r][c];

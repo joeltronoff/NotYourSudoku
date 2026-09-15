@@ -157,7 +157,7 @@
     },
     diagonal: {
       title: "Diagonal",
-      blurb: "Both long diagonals also hold every digit 1–9, same as a row.",
+      blurb: "The marked long diagonals also hold every digit 1–9, same as a row.",
       icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M4.5 4.5l15 15M19.5 4.5l-15 15" stroke-width="1.8"/></svg>',
     },
     oddeven: {
@@ -169,6 +169,13 @@
       title: "Fog of War",
       blurb: "The grid starts hidden. Correct digits burn off the fog around them, one patch at a time.",
       icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15c1-3.5 3.6-6 7-6 2 0 3.3 1 4.5 2"/><path d="M9 18c1.3-2.4 3.4-4 6-4 3 0 5 2 6 4.5"/><circle cx="17" cy="8" r="2.4" fill="currentColor" stroke="none"/></svg>',
+    },
+    // Hand-picked classic (rules-only) puzzles from the library, as opposed
+    // to the generated ones dealt from the Classic card above.
+    classic: {
+      title: "Classic Collection",
+      blurb: "Standard sudoku rules, set by hand — no variant constraints.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M9.5 3.5v17M14.5 3.5v17M3.5 9.5h17M3.5 14.5h17"/><circle cx="17.5" cy="17.5" r="3" fill="currentColor" stroke="var(--paper)" stroke-width="1.2"/></svg>',
     },
   };
 
@@ -274,13 +281,34 @@
     return out + '</span>';
   }
 
+  // With hundreds of imported puzzles per category, the list needs a sort.
+  // "default" keeps library order (hand-authored first, then newest imports).
+  let variantMenuKey = null;
+  let variantMenuSort = "default";
+  document.querySelectorAll("#menuSortRow .chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      variantMenuSort = chip.dataset.sort;
+      if (variantMenuKey) renderVariantMenu(variantMenuKey);
+    });
+  });
+
   function renderVariantMenu(key) {
     const info = VARIANT_INFO[key];
+    if (variantMenuKey !== key) {
+      variantMenuKey = key;
+      variantMenuSort = "default";
+    }
     document.getElementById("variantMenuTitle").textContent = info.title;
     document.getElementById("variantMenuBlurb").textContent = info.blurb;
+    document.querySelectorAll("#menuSortRow .chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.sort === variantMenuSort);
+    });
 
     const progress = loadProgress();
-    const entries = (window.PuzzleLibrary || []).filter(e => entryVariants(e).includes(key));
+    let entries = (window.PuzzleLibrary || []).filter(e => entryVariants(e).includes(key));
+    if (variantMenuSort === "easiest") entries = entries.slice().sort((a, b) => (a.stars || 0) - (b.stars || 0));
+    else if (variantMenuSort === "hardest") entries = entries.slice().sort((a, b) => (b.stars || 0) - (a.stars || 0));
+    else if (variantMenuSort === "unsolved") entries = entries.filter(e => !progress.completed.includes(e.id));
     const listEl = document.getElementById("menuPuzzleList");
     listEl.innerHTML = "";
     entries.forEach(entry => {
@@ -696,7 +724,7 @@
         text.setAttribute("x", tc * 10 + INSET + 0.35);
         text.setAttribute("y", tr * 10 + INSET + 1.9);
         text.setAttribute("class", "cage-sum");
-        text.textContent = cage.sum;
+        text.textContent = cage.sum == null ? "" : cage.sum;
         svg.appendChild(text);
       });
     }
@@ -853,6 +881,17 @@
       addDeco(r, c, { kind: "line", x1: x3, y1: y3, x2: x4, y2: y4, className });
     }
 
+    // Diagonal (X-Sudoku) guide lines: drawn per-cell, corner-to-corner in
+    // local space, so they paint behind the digit like every other
+    // decoration and line up seamlessly across the cell boundary. Added
+    // first so the wide band sits under any line or arrow crossing it.
+    if (state.diagonals) {
+      for (let i = 0; i < 9; i++) {
+        if (state.diagonals !== "anti") addDeco(i, i, { kind: "line", x1: 0, y1: 0, x2: 10, y2: 10, className: "diagonal-line" });
+        if (state.diagonals !== "main") addDeco(i, 8 - i, { kind: "line", x1: 10, y1: 0, x2: 0, y2: 10, className: "diagonal-line" });
+      }
+    }
+
     const THERMO_BULB_R = 3.4;
     const ARROW_CIRCLE_R = 4;
     const HEAD_LEN = 1.8, HEAD_WIDTH = 1.1;
@@ -897,16 +936,6 @@
       const p3 = localize(lr, lc, backX - perpX * HEAD_WIDTH, backY - perpY * HEAD_WIDTH);
       addDeco(lr, lc, { kind: "polyline", points: [p1, p2, p3].map(p => p.join(",")).join(" "), className: "arrow-head" });
     });
-
-    // Diagonal (X-Sudoku) guide lines: drawn per-cell, corner-to-corner in
-    // local space, so they paint behind the digit like every other
-    // decoration and line up seamlessly across the cell boundary.
-    if (state.diagonals) {
-      for (let i = 0; i < 9; i++) {
-        addDeco(i, i, { kind: "line", x1: 0, y1: 0, x2: 10, y2: 10, className: "diagonal-line" });
-        addDeco(i, 8 - i, { kind: "line", x1: 10, y1: 0, x2: 0, y2: 10, className: "diagonal-line" });
-      }
-    }
 
     // Odd/Even markers: a shaded circle or square behind the digit.
     (state.oddEven || []).forEach(clue => {
@@ -1102,6 +1131,9 @@
     const rules = [];
     if (state.cages && state.cages.length > 0) {
       rules.push("Digits in a dashed cage sum to the small number shown, with no digit repeated inside the cage.");
+      if (state.cages.some(c => c.sum == null)) {
+        rules.push("A cage with no number just can't repeat a digit.");
+      }
     }
     if (state.kropki && state.kropki.length > 0) {
       if (state.kropki.some(d => d.kind === "white")) {
@@ -1143,8 +1175,10 @@
     if (state.littleKiller && state.littleKiller.length > 0) {
       rules.push("Diagonal clues outside the grid give the sum of the digits along that diagonal, in the direction of the arrow.");
     }
-    if (state.diagonals) {
+    if (state.diagonals === true) {
       rules.push("Both long diagonals also contain every digit 1–9, same as a row.");
+    } else if (state.diagonals) {
+      rules.push("The marked diagonal also contains every digit 1–9, same as a row.");
     }
     if (state.oddEven && state.oddEven.length > 0) {
       rules.push("Shaded circles must hold an odd digit; shaded squares must hold an even digit.");
@@ -1158,13 +1192,20 @@
   const rulesPanelEl = document.getElementById("rulesPanel");
   function renderRulesPanel() {
     const rules = computeActiveRules();
-    if (rules.length === 0) {
+    // Imported puzzles link back to the video they were featured in.
+    const entry = state.puzzleId && (window.PuzzleLibrary || []).find(e => e.id === state.puzzleId);
+    const videoUrl = entry && entry.source && entry.source.video;
+    const sourceLink = videoUrl && /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]+$/.test(videoUrl)
+      ? `<a class="rules-panel-source" href="${videoUrl}" target="_blank" rel="noopener">Watch the solve on Cracking the Cryptic</a>`
+      : "";
+    if (rules.length === 0 && !sourceLink) {
       rulesPanelEl.hidden = true;
       rulesPanelEl.innerHTML = "";
       return;
     }
+    if (rules.length === 0) rules.push("Normal sudoku rules: every row, column, and box contains the digits 1–9.");
     rulesPanelEl.innerHTML = `<span class="rules-panel-title">Rules for this puzzle</span>` +
-      `<ul>${rules.map(r => `<li>${r}</li>`).join("")}</ul>`;
+      `<ul>${rules.map(r => `<li>${r}</li>`).join("")}</ul>` + sourceLink;
     // Never show alongside the killer calculator -- they share one slot.
     rulesPanelEl.hidden = !killerCalcEl.hidden;
   }

@@ -523,6 +523,13 @@ button {
   padding-left: 14px;
 }
 .rules-panel li + li { margin-top: 3px; }
+.rules-panel-source {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--accent-dark);
+  font-weight: 600;
+  text-decoration: underline;
+}
 .rules-panel li::before {
   content: "";
   position: absolute;
@@ -818,6 +825,13 @@ button {
   margin: 0 0 2px;
 }
 
+.menu-sort-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 12px 0 10px;
+}
+.menu-sort-row .chip { padding: 8px 4px; }
 .menu-puzzle-list { display: flex; flex-direction: column; gap: 8px; }
 .menu-puzzle-row {
   display: flex;
