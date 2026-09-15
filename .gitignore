@@ -5,3 +5,11 @@ tools/generate-puzzles/solver-verified.json
 tools/generate-puzzles/sandwich-xv.json
 tools/import-fpuzzles/imported-final.json
 tools/import-fpuzzles/_import_check.json
+tools/generate-fog/fog-puzzles.json
+tools/generate-fog/formatted-entries.txt
+tools/generate-fog/_enriched.json
+tools/generate-fog/diagonal-section.txt
+tools/generate-fog/oddeven-section.txt
+tools/generate-fog/fog-section.txt
+tools/generate-diagonal/diagonal-puzzles.json
+tools/generate-oddeven/oddeven-puzzles.json

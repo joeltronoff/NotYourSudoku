@@ -13,6 +13,8 @@
   --user-entry: #2C4A6E;
   --grid-line: #D9D6CC;
   --grid-line-strong: #2B2A27;
+  --fog: #BFB8A6;
+  --fog-dark: #A79E88;
   --line-thin: 1px;
   --line-thick: 2.5px;
   --radius: 10px;
@@ -284,6 +286,9 @@ button {
 .arrow-line { stroke: var(--ink-soft); stroke-width: 0.5; }
 .arrow-head { fill: none; stroke: var(--ink-soft); stroke-width: 0.5; stroke-linecap: round; stroke-linejoin: round; }
 .arrow-circle { fill: none; stroke: var(--ink-soft); stroke-width: 0.6; }
+.diagonal-line { stroke: var(--accent-soft); stroke-width: 3.2; stroke-linecap: butt; }
+.oddeven-odd { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; }
+.oddeven-even { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; rx: 0.8; }
 
 .cell {
   display: flex;
@@ -348,6 +353,18 @@ button {
 .cell.selected::before { background: rgba(204, 120, 92, 0.38); }
 .cell.conflict::before { background: rgba(192, 57, 43, 0.24); }
 .cell.hint-target { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
+
+/* Fog of War: an opaque cover over anything not yet revealed. Layered
+   radial gradients give it a soft, uneven "cloud" read instead of a flat
+   slab of color; it fully overrides any cell shading underneath since a
+   cell can't have been color-tagged before it was ever seen. */
+.cell.fogged {
+  background:
+    radial-gradient(circle at 28% 32%, rgba(255, 255, 255, 0.16), transparent 55%),
+    radial-gradient(circle at 72% 68%, rgba(0, 0, 0, 0.08), transparent 60%),
+    var(--fog);
+}
+.cell.fogged::before { background: transparent; }
 
 .notes-grid {
   position: absolute;
@@ -477,6 +494,45 @@ button {
 .icon-tool:active { background: var(--accent-soft); }
 .icon-tool.on { background: var(--accent); color: #fff; }
 .icon-tool.disabled { opacity: 0.35; }
+
+/* ---------- Rules panel ---------- */
+/* Shares its slot with the killer calculator (see app.js) -- only one of
+   the two is ever visible at a time, so this never adds extra height on
+   top of whichever one is showing. */
+.rules-panel {
+  padding: 10px 14px;
+  background: var(--panel-bg);
+  border-radius: 12px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.rules-panel-title {
+  font-weight: 700;
+  color: var(--accent-dark);
+  display: block;
+  margin-bottom: 4px;
+}
+.rules-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rules-panel li {
+  position: relative;
+  padding-left: 14px;
+}
+.rules-panel li + li { margin-top: 3px; }
+.rules-panel li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+}
 
 /* ---------- Killer cage calculator ---------- */
 .killer-calc {

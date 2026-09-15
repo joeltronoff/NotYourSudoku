@@ -14,8 +14,67 @@
       sandwich: state.sandwich,
       xv: state.xv,
       littleKiller: state.littleKiller,
+      diagonals: state.diagonals,
+      oddEven: state.oddEven,
     });
     return new Set([...classic, ...variant]);
+  }
+
+  // ---------------- Fog of War ----------------
+  // Only a cell the PLAYER has actually solved lights up its neighborhood --
+  // a given, even once revealed, just sits there (it still helps you deduce
+  // its neighbors, it just doesn't also spread the fog-clearing on its own).
+  // Otherwise two givens sitting near each other would silently reveal one
+  // another the instant either one is seen, with no solving involved at
+  // all -- and givens are typically dense enough that this cascades across
+  // almost the whole grid before the player does anything. The one
+  // exception is the initial reveal seed itself: those cells' neighborhoods
+  // light up once, unconditionally, as the puzzle's starting condition,
+  // exactly like a torch already lit when you walk in. Computed fresh from
+  // state.grid/state.solution every time rather than stored, so undo/erase
+  // can never leave stale fog behind.
+  function computeFogRevealed() {
+    if (!state.fog) return null;
+    const seed = state.fog.reveal || [];
+    const radius = state.fog.radius || 1;
+    const revealed = new Set(seed.map(([r, c]) => `${r},${c}`));
+    function lightNeighbors(r, c) {
+      for (let dr = -radius; dr <= radius; dr++) {
+        for (let dc = -radius; dc <= radius; dc++) {
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr > 8 || nc < 0 || nc > 8) continue;
+          revealed.add(`${nr},${nc}`);
+        }
+      }
+    }
+    for (const [r, c] of seed) {
+      if (state.grid[r][c] !== 0 && state.grid[r][c] === state.solution[r][c]) lightNeighbors(r, c);
+    }
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const key = `${r},${c}`;
+          if (!revealed.has(key)) continue;
+          if (state.givens[r][c] !== 0) continue; // a given never re-propagates on its own
+          if (state.grid[r][c] === 0 || state.grid[r][c] !== state.solution[r][c]) continue;
+          for (let dr = -radius; dr <= radius; dr++) {
+            for (let dc = -radius; dc <= radius; dc++) {
+              const nr = r + dr, nc = c + dc;
+              if (nr < 0 || nr > 8 || nc < 0 || nc > 8) continue;
+              const nk = `${nr},${nc}`;
+              if (!revealed.has(nk)) { revealed.add(nk); changed = true; }
+            }
+          }
+        }
+      }
+    }
+    return revealed;
+  }
+  function isCellFogged(r, c) {
+    const revealed = computeFogRevealed();
+    return !!revealed && !revealed.has(`${r},${c}`);
   }
 
   function isKnightMove(r1, c1, r2, c2) {
@@ -95,6 +154,21 @@
       title: "XV",
       blurb: "An X between cells sums to 10, a V sums to 5.",
       icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l6 10M10 7l-6 10"/><path d="M14 7l3 8 3-8"/></svg>',
+    },
+    diagonal: {
+      title: "Diagonal",
+      blurb: "Both long diagonals also hold every digit 1–9, same as a row.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M4.5 4.5l15 15M19.5 4.5l-15 15" stroke-width="1.8"/></svg>',
+    },
+    oddeven: {
+      title: "Odd/Even",
+      blurb: "Shaded circles must hold an odd digit, shaded squares an even one.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="4" fill="currentColor" stroke="none"/><rect x="14" y="8" width="8" height="8" rx="1.5" fill="currentColor" stroke="none"/></svg>',
+    },
+    fog: {
+      title: "Fog of War",
+      blurb: "The grid starts hidden. Correct digits burn off the fog around them, one patch at a time.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15c1-3.5 3.6-6 7-6 2 0 3.3 1 4.5 2"/><path d="M9 18c1.3-2.4 3.4-4 6-4 3 0 5 2 6 4.5"/><circle cx="17" cy="8" r="2.4" fill="currentColor" stroke="none"/></svg>',
     },
   };
 
@@ -264,6 +338,9 @@
       sandwich: null,
       xv: [],
       littleKiller: [],
+      diagonals: false,
+      oddEven: [],
+      fog: null,
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -282,6 +359,7 @@
     startTimer();
     saveState();
     renderConstraintOverlays();
+    renderRulesPanel();
     render();
     renderSandwichClues();
     renderLittleKillerClues();
@@ -308,6 +386,9 @@
       sandwich: entry.sandwich || null,
       xv: entry.xv || [],
       littleKiller: entry.littleKiller || [],
+      diagonals: entry.diagonals || false,
+      oddEven: entry.oddEven || [],
+      fog: entry.fog || null,
       cornerNotes: emptyNotes(),
       centerNotes: emptyNotes(),
       colors: emptyColors(),
@@ -326,6 +407,7 @@
     startTimer();
     saveState();
     renderConstraintOverlays();
+    renderRulesPanel();
     render();
     renderSandwichClues();
     renderLittleKillerClues();
@@ -367,6 +449,9 @@
       sandwich: state.sandwich,
       xv: state.xv,
       littleKiller: state.littleKiller,
+      diagonals: state.diagonals,
+      oddEven: state.oddEven,
+      fog: state.fog,
       cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
       centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
       colors: state.colors,
@@ -398,6 +483,9 @@
         sandwich: data.sandwich || null,
         xv: data.xv || [],
         littleKiller: data.littleKiller || [],
+        diagonals: data.diagonals || false,
+        oddEven: data.oddEven || [],
+        fog: data.fog || null,
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
@@ -423,12 +511,22 @@
   function render() {
     boardEl.innerHTML = "";
     const conflicts = currentConflicts();
+    const fogRevealed = computeFogRevealed();
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         const cell = document.createElement("div");
         cell.className = "cell";
         cell.dataset.r = r;
         cell.dataset.c = c;
+
+        if (fogRevealed && !fogRevealed.has(`${r},${c}`)) {
+          // Still under fog: no digit, notes, decoration, or interaction
+          // state gets rendered — none of that is information the player
+          // has actually earned yet.
+          cell.classList.add("fogged");
+          boardEl.appendChild(cell);
+          continue;
+        }
 
         const val = state.grid[r][c];
         const isGiven = state.givens[r][c] !== 0;
@@ -799,6 +897,26 @@
       const p3 = localize(lr, lc, backX - perpX * HEAD_WIDTH, backY - perpY * HEAD_WIDTH);
       addDeco(lr, lc, { kind: "polyline", points: [p1, p2, p3].map(p => p.join(",")).join(" "), className: "arrow-head" });
     });
+
+    // Diagonal (X-Sudoku) guide lines: drawn per-cell, corner-to-corner in
+    // local space, so they paint behind the digit like every other
+    // decoration and line up seamlessly across the cell boundary.
+    if (state.diagonals) {
+      for (let i = 0; i < 9; i++) {
+        addDeco(i, i, { kind: "line", x1: 0, y1: 0, x2: 10, y2: 10, className: "diagonal-line" });
+        addDeco(i, 8 - i, { kind: "line", x1: 10, y1: 0, x2: 0, y2: 10, className: "diagonal-line" });
+      }
+    }
+
+    // Odd/Even markers: a shaded circle or square behind the digit.
+    (state.oddEven || []).forEach(clue => {
+      const [r, c] = clue.cell;
+      if (clue.parity === "even") {
+        addDeco(r, c, { kind: "rect", x: 1.7, y: 1.7, w: 6.6, h: 6.6, className: "oddeven-even" });
+      } else {
+        addDeco(r, c, { kind: "circle", cx: 5, cy: 5, r: 3.3, className: "oddeven-odd" });
+      }
+    });
   }
 
   function buildCellDecorationSvg(decos) {
@@ -819,6 +937,12 @@
         el.setAttribute("cx", d.cx);
         el.setAttribute("cy", d.cy);
         el.setAttribute("r", d.r);
+      } else if (d.kind === "rect") {
+        el = document.createElementNS(svgNS, "rect");
+        el.setAttribute("x", d.x);
+        el.setAttribute("y", d.y);
+        el.setAttribute("width", d.w);
+        el.setAttribute("height", d.h);
       } else {
         el = document.createElementNS(svgNS, "polyline");
         el.setAttribute("points", d.points);
@@ -830,12 +954,14 @@
   }
 
   function selectCell(r, c) {
+    if (isCellFogged(r, c)) return;
     state.selected = [[r, c]];
     hintOutput.classList.remove("show");
     render();
   }
 
   function extendSelection(r, c) {
+    if (isCellFogged(r, c)) return;
     if (state.selected.some(([sr, sc]) => sr === r && sc === c)) return;
     state.selected.push([r, c]);
     render();
@@ -962,7 +1088,85 @@
       || !!state.antiKnight
       || !!state.sandwich
       || (state.xv && state.xv.length > 0)
-      || (state.littleKiller && state.littleKiller.length > 0);
+      || (state.littleKiller && state.littleKiller.length > 0)
+      || !!state.diagonals
+      || (state.oddEven && state.oddEven.length > 0)
+      || !!state.fog;
+  }
+
+  // ---------------- Rules panel ----------------
+  // Builds the specific rule list for whatever's actually active in the
+  // loaded puzzle -- e.g. a puzzle with only thermometers doesn't mention
+  // whispers or renban, and a plain classic puzzle shows nothing at all.
+  function computeActiveRules() {
+    const rules = [];
+    if (state.cages && state.cages.length > 0) {
+      rules.push("Digits in a dashed cage sum to the small number shown, with no digit repeated inside the cage.");
+    }
+    if (state.kropki && state.kropki.length > 0) {
+      if (state.kropki.some(d => d.kind === "white")) {
+        rules.push("A white dot between two cells means they're consecutive digits.");
+      }
+      if (state.kropki.some(d => d.kind === "black")) {
+        rules.push("A black dot between two cells means one digit is double the other.");
+      }
+    }
+    if (state.kropkiNegative) {
+      rules.push("Adjacent cells with no dot between them are confirmed not consecutive and not in a 2:1 ratio.");
+    }
+    if (state.lines && state.lines.length > 0) {
+      if (state.lines.some(l => l.kind === "thermo")) {
+        rules.push("Digits increase from the bulb (circle end) to the tip along each thermometer.");
+      }
+      if (state.lines.some(l => l.kind === "whispers")) {
+        rules.push("Neighboring digits on a green line differ by 5 or more.");
+      }
+      if (state.lines.some(l => l.kind === "renban")) {
+        rules.push("Digits on a purple line form a consecutive set, in any order, with no repeats.");
+      }
+      if (state.lines.some(l => l.kind === "palindrome")) {
+        rules.push("Digits on a line read the same from either end.");
+      }
+    }
+    if (state.arrows && state.arrows.length > 0) {
+      rules.push("Digits along an arrow's shaft sum to the digit in its circle.");
+    }
+    if (state.antiKnight) {
+      rules.push("Two cells a knight's-move apart can't hold the same digit.");
+    }
+    if (state.sandwich) {
+      rules.push("Clues outside the grid give the sum of the digits sandwiched between the 1 and the 9 in that row or column.");
+    }
+    if (state.xv && state.xv.length > 0) {
+      rules.push("Cells joined by a small X sum to 10; joined by a V, they sum to 5.");
+    }
+    if (state.littleKiller && state.littleKiller.length > 0) {
+      rules.push("Diagonal clues outside the grid give the sum of the digits along that diagonal, in the direction of the arrow.");
+    }
+    if (state.diagonals) {
+      rules.push("Both long diagonals also contain every digit 1–9, same as a row.");
+    }
+    if (state.oddEven && state.oddEven.length > 0) {
+      rules.push("Shaded circles must hold an odd digit; shaded squares must hold an even digit.");
+    }
+    if (state.fog) {
+      rules.push("The grid starts hidden under fog. Fill a cell correctly and the fog clears around it.");
+    }
+    return rules;
+  }
+
+  const rulesPanelEl = document.getElementById("rulesPanel");
+  function renderRulesPanel() {
+    const rules = computeActiveRules();
+    if (rules.length === 0) {
+      rulesPanelEl.hidden = true;
+      rulesPanelEl.innerHTML = "";
+      return;
+    }
+    rulesPanelEl.innerHTML = `<span class="rules-panel-title">Rules for this puzzle</span>` +
+      `<ul>${rules.map(r => `<li>${r}</li>`).join("")}</ul>`;
+    // Never show alongside the killer calculator -- they share one slot.
+    rulesPanelEl.hidden = !killerCalcEl.hidden;
   }
 
   function updateHintAvailability() {
@@ -1100,6 +1304,9 @@
     const opening = killerCalcEl.hidden;
     killerCalcEl.hidden = !opening;
     killerCalcBtn.classList.toggle("on", opening);
+    // The calculator and the rules panel share one slot — opening the
+    // calculator hides the rules, closing it brings them back.
+    renderRulesPanel();
     // Only (re)compute on first open — reopening the panel without
     // changing cells/sum should keep whatever's been crossed out.
     if (opening && !killerCalcCombosEl.children.length) renderKillerCalc();
@@ -1171,6 +1378,7 @@
   // but the board itself only becomes visible once something is chosen.
   if (loadState()) {
     renderConstraintOverlays();
+    renderRulesPanel();
     render();
     renderSandwichClues();
     renderLittleKillerClues();
