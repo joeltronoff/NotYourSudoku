@@ -13,7 +13,7 @@
     errorCheck: "full",       // full | classic | off
     hideTimer: false,
     highlightDigit: true,
-    digitCounts: true,
+    digitCounts: false,
     autoClearNotes: true,
     cageCalculator: true,
     showSeen: true,
