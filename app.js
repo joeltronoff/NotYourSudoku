@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-16.5";
+window.APP_BUILD = "2026-09-16.6";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -31,7 +31,17 @@ window.APP_BUILD = "2026-09-16.5";
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      settings = { ...DEFAULT_SETTINGS, ...(raw ? JSON.parse(raw) : {}) };
+      const stored = raw ? JSON.parse(raw) : {};
+      // The lock button used to switch digit-first on, so every device that
+      // ever pressed it has that saved. The button holds a selection now,
+      // which leaves the old preference on with nothing pointing at it --
+      // and digit-first takes over the keypad, so pressing a digit holds it
+      // rather than writing it and a gathered selection can never be
+      // filled. Settings written before the change have no keepSelection
+      // key; that is the tell, and it can only fire once.
+      if (!("keepSelection" in stored)) stored.digitFirst = false;
+      settings = { ...DEFAULT_SETTINGS, ...stored };
+      saveSettings();
     } catch (e) {
       settings = { ...DEFAULT_SETTINGS };
     }
@@ -1292,10 +1302,10 @@ window.APP_BUILD = "2026-09-16.5";
         }
       }
       btn.addEventListener("click", () => {
-        if (settings.digitFirst) setLockedDigit(n);
+        if (holdingDigits()) setLockedDigit(n);
         else inputNumber(n);
       });
-      if (settings.digitFirst && lockedDigit === n) btn.classList.add("locked");
+      if (holdingDigits() && lockedDigit === n) btn.classList.add("locked");
       numpadEl.appendChild(btn);
     }
   }
@@ -1743,6 +1753,14 @@ window.APP_BUILD = "2026-09-16.5";
   // writes corner marks in corner mode, a colour in colour mode.
   let lockedDigit = null;
 
+  // The two are opposite ways round: digit-first holds a digit and taps
+  // write it, the selection lock gathers cells and the keypad fills them.
+  // Both at once would mean a keypad press could never fill the set you
+  // just gathered, so the lock wins while it is on.
+  function holdingDigits() {
+    return settings.digitFirst && !settings.keepSelection;
+  }
+
   function setLockedDigit(n) {
     lockedDigit = lockedDigit === n ? null : n;
     renderNumpad();
@@ -1759,7 +1777,7 @@ window.APP_BUILD = "2026-09-16.5";
     hintOutput.classList.remove("show");
     syncCageCalculator(r, c);
 
-    if (settings.digitFirst && lockedDigit) {
+    if (holdingDigits() && lockedDigit) {
       state.selected = [[r, c]];
       applyLockedDigit(r, c);
       return;   // inputNumber already re-rendered
@@ -1838,7 +1856,7 @@ window.APP_BUILD = "2026-09-16.5";
   function extendSelection(r, c) {
     if (state.selected.some(([sr, sc]) => sr === r && sc === c)) return;
     // Dragging with a locked digit paints it across the cells you cross.
-    if (settings.digitFirst && lockedDigit) {
+    if (holdingDigits() && lockedDigit) {
       state.selected.push([r, c]);
       applyLockedDigit(r, c);
       return;
