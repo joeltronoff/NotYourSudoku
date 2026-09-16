@@ -575,6 +575,12 @@ button {
 }
 .num-btn:active { background: var(--accent-soft); }
 .num-btn.exhausted { opacity: 0.3; }
+/* The digit currently held for digit-first input. */
+.num-btn.locked {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--accent-dark) inset;
+}
 /* How many of this digit are still unplaced, tucked in the corner. */
 .num-btn { position: relative; }
 .num-left {

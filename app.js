@@ -14,6 +14,7 @@
     hideTimer: false,
     highlightDigit: true,
     digitCounts: false,
+    digitFirst: false,
     autoClearNotes: true,
     cageCalculator: true,
     showSeen: true,
@@ -491,6 +492,7 @@
     ["setHideTimer", "hideTimer"],
     ["setHighlightDigit", "highlightDigit"],
     ["setDigitCounts", "digitCounts"],
+    ["setDigitFirst", "digitFirst"],
     ["setAutoClear", "autoClearNotes"],
     ["setCageCalc", "cageCalculator"],
     ["setShowSeen", "showSeen"],
@@ -1279,7 +1281,11 @@
           btn.appendChild(left);
         }
       }
-      btn.addEventListener("click", () => inputNumber(n));
+      btn.addEventListener("click", () => {
+        if (settings.digitFirst) setLockedDigit(n);
+        else inputNumber(n);
+      });
+      if (settings.digitFirst && lockedDigit === n) btn.classList.add("locked");
       numpadEl.appendChild(btn);
     }
   }
@@ -1721,10 +1727,32 @@
     }
   }
 
+  // Digit-first ("sticky") input: pick a digit on the keypad once, then
+  // tap cells to write it, instead of selecting cells first. Tapping the
+  // same key again lets go of it. Works in every mode -- a locked digit
+  // writes corner marks in corner mode, a colour in colour mode.
+  let lockedDigit = null;
+
+  function setLockedDigit(n) {
+    lockedDigit = lockedDigit === n ? null : n;
+    renderNumpad();
+  }
+
+  function applyLockedDigit(r, c) {
+    const previous = state.selected;
+    state.selected = [[r, c]];
+    inputNumber(lockedDigit);
+    state.selected = previous.length ? previous : [[r, c]];
+  }
+
   function selectCell(r, c) {
     state.selected = [[r, c]];
     hintOutput.classList.remove("show");
     syncCageCalculator(r, c);
+    if (settings.digitFirst && lockedDigit) {
+      applyLockedDigit(r, c);
+      return;   // inputNumber already re-rendered
+    }
     render();
   }
 
@@ -1773,6 +1801,12 @@
 
   function extendSelection(r, c) {
     if (state.selected.some(([sr, sc]) => sr === r && sc === c)) return;
+    // Dragging with a locked digit paints it across the cells you cross.
+    if (settings.digitFirst && lockedDigit) {
+      state.selected.push([r, c]);
+      applyLockedDigit(r, c);
+      return;
+    }
     state.selected.push([r, c]);
     render();
   }
@@ -1932,6 +1966,7 @@
     state.selected = [];
     forceFullCheck = false;
     resetHint();
+    lockedDigit = null;
     timerDisplay.textContent = formatTime(0);
     winOverlay.classList.remove("show");
     hintOutput.classList.remove("show");
