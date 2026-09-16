@@ -15,6 +15,7 @@
   --grid-line-strong: #2B2A27;
   --fog: #BFB8A6;
   --fog-dark: #A79E88;
+  --fog-line: #9C927C;
   --pen: #2F6F8F;
   --line-thin: 1px;
   --line-thick: 2.5px;
@@ -42,6 +43,7 @@
   --grid-line-strong: #C8C4BA;
   --fog: #4A463D;
   --fog-dark: #3A362F;
+  --fog-line: #6E695E;
   --pen: #7FC4E8;
 }
 @media (prefers-color-scheme: dark) {
@@ -62,6 +64,7 @@
     --grid-line-strong: #C8C4BA;
     --fog: #4A463D;
     --fog-dark: #3A362F;
+    --fog-line: #6E695E;
     --pen: #7FC4E8;
   }
 }
@@ -486,7 +489,14 @@ button {
 /* Fog of War: a flat, opaque cover over anything not yet revealed. It
    fully overrides any cell shading underneath, since a cell can't have
    been colour-tagged before it was ever seen. */
-.cell.fogged { background: var(--fog); }
+.cell.fogged {
+  background: var(--fog);
+  /* The fog is nearly the same tone as the grid lines, which made the
+     cell lattice disappear under it — keep the lines readable so you can
+     still count cells and see where the boxes start. */
+  border-right-color: var(--fog-line);
+  border-bottom-color: var(--fog-line);
+}
 .cell.fogged::before { background: transparent; }
 
 .notes-grid {
