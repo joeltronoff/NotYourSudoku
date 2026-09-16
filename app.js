@@ -15,6 +15,7 @@
     highlightDigit: true,
     digitCounts: true,
     autoClearNotes: true,
+    cageCalculator: true,
   };
   let settings = { ...DEFAULT_SETTINGS };
   function loadSettings() {
@@ -437,6 +438,7 @@
     ["setHighlightDigit", "highlightDigit"],
     ["setDigitCounts", "digitCounts"],
     ["setAutoClear", "autoClearNotes"],
+    ["setCageCalc", "cageCalculator"],
   ];
 
   function renderSettings() {
@@ -1519,7 +1521,51 @@
   function selectCell(r, c) {
     state.selected = [[r, c]];
     hintOutput.classList.remove("show");
+    syncCageCalculator(r, c);
     render();
+  }
+
+  // Selecting a cell inside a killer cage opens the calculator already set
+  // to that cage: its size, its total, and any digits it already holds
+  // marked as required, so the list is only the combinations still open to
+  // you. Leaving the cage closes it again -- but only if it opened itself;
+  // a calculator you opened by hand stays where you put it.
+  let calcOpenedByCage = false;
+  function syncCageCalculator(r, c) {
+    if (!settings.cageCalculator) return;
+    let cage = (state.cages || []).find(cg => cg.cells.some(([cr, cc]) => cr === r && cc === c));
+
+    // Under fog, a cage you can only partly see is information you haven't
+    // earned yet -- its total and even its shape are still hidden. Only
+    // offer the calculator once every cell of the cage is out of the fog.
+    if (cage && state.fog) {
+      const revealed = computeFogRevealed();
+      if (revealed && cage.cells.some(([cr, cc]) => !revealed.has(`${cr},${cc}`))) cage = null;
+    }
+
+    if (!cage || cage.sum == null) {
+      if (calcOpenedByCage) {
+        calcOpenedByCage = false;
+        killerCalcEl.hidden = true;
+        killerCalcBtn.classList.remove("on");
+        renderRulesPanel();
+      }
+      return;
+    }
+
+    calcCells = cage.cells.length;
+    calcSum = cage.sum;
+    calcInclude.clear();
+    calcExclude.clear();
+    for (const [cr, cc] of cage.cells) {
+      const v = state.grid[cr][cc];
+      if (v !== 0) calcInclude.add(v);
+    }
+    killerCalcEl.hidden = false;
+    killerCalcBtn.classList.add("on");
+    calcOpenedByCage = true;
+    renderRulesPanel();
+    renderKillerCalc();
   }
 
   function extendSelection(r, c) {
@@ -2021,6 +2067,7 @@
 
   killerCalcBtn.addEventListener("click", () => {
     const opening = killerCalcEl.hidden;
+    calcOpenedByCage = false;
     killerCalcEl.hidden = !opening;
     killerCalcBtn.classList.toggle("on", opening);
     // The calculator and the rules panel share one slot — opening the
