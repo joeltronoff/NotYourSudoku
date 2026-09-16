@@ -510,6 +510,8 @@
 
   function applySettingsToBoard() {
     timerDisplay.hidden = !!settings.hideTimer;
+    if (!settings.digitFirst) lockedDigit = null;
+    renderLockTool();
     if (state) {
       renderNumpad();
       render();
@@ -2341,6 +2343,33 @@
   document.getElementById("prefsBtn").addEventListener("click", showSettings);
   document.getElementById("statsBtn").addEventListener("click", showStats);
   document.getElementById("redoBtn").addEventListener("click", redo);
+
+  // Digit-first is a tool, not just a preference: the button holds the
+  // mode on, and the choice is remembered like the other settings.
+  const lockBtn = document.getElementById("lockBtn");
+  const seenBtn = document.getElementById("seenBtn");
+  seenBtn.addEventListener("click", () => {
+    settings.showSeen = !settings.showSeen;
+    saveSettings();
+    renderLockTool();
+    renderSettings();
+    render();
+  });
+  function renderLockTool() {
+    seenBtn.setAttribute("aria-pressed", settings.showSeen ? "true" : "false");
+    lockBtn.setAttribute("aria-pressed", settings.digitFirst ? "true" : "false");
+    lockBtn.title = settings.digitFirst
+      ? "Digit first: on — tap a digit, then tap cells"
+      : "Digit first: tap a digit, then tap cells";
+  }
+  lockBtn.addEventListener("click", () => {
+    settings.digitFirst = !settings.digitFirst;
+    if (!settings.digitFirst) lockedDigit = null;
+    saveSettings();
+    renderLockTool();
+    renderSettings();
+    renderNumpad();
+  });
   document.getElementById("restartBtn").addEventListener("click", () => {
     if (!state) return;
     const filled = state.grid.flat().filter(Boolean).length - state.givens.flat().filter(Boolean).length;
@@ -2634,6 +2663,7 @@
   // but the board itself only becomes visible once something is chosen.
   loadSettings();
   timerDisplay.hidden = !!settings.hideTimer;
+  renderLockTool();
   if (loadState()) {
     renderConstraintOverlays();
     renderRulesPanel();

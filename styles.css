@@ -543,25 +543,44 @@ button {
 }
 
 /* ---------- Numpad + mode rail ---------- */
-.input-row {
+/* One control block: app tools and edit tools down the left, the 3x3
+   keypad in the middle with the extra tools beneath it, and the input
+   modes down the right. Everything is square and sized off one column
+   width, so the whole block scales together and never outgrows a short
+   viewport. */
+.pad {
   display: flex;
-  gap: 10px;
-  align-items: stretch;
-  max-width: 400px;
-  margin: 0 auto;
+  gap: 6px;
+  align-items: flex-start;
+  justify-content: center;
   width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
 }
-.mobile-numpad {
+.pad-tools,
+.pad-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.pad-center {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 3 1 0;
+  min-width: 0;
+}
+.pad-numbers {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
   gap: 6px;
-  flex: 1;
-  /* Kept deliberately small: a 3x3 keypad is much taller than the old
-     single row for the same width, and this panel shares the screen
-     with a board sized independently in viewport units — a generous
-     cap here is exactly what overflows short viewports. */
-  max-width: 130px;
+}
+.pad-extra {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 .num-btn {
   aspect-ratio: 1 / 1;
@@ -602,15 +621,8 @@ button {
   border-radius: 6px;
 }
 
-.mode-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 0 0 auto;
-  width: 60px;
-}
 .mode-btn {
-  flex: 1;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -629,21 +641,9 @@ button {
   gap: 8px;
 }
 
-.icon-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  /* Buttons are square and width-driven (aspect-ratio below), so an
-     unbounded row grows tall on any screen that's wide but short (a
-     phone in a wide/landscape-ish aspect) — cap it like a phone-width
-     row regardless of how much horizontal space is actually on offer. */
-  max-width: 420px;
-  margin: 0 auto;
-  width: 100%;
-}
 .icon-tool {
-  flex: 1;
   aspect-ratio: 1 / 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -654,6 +654,7 @@ button {
 }
 .icon-tool:active { background: var(--accent-soft); }
 .icon-tool.on { background: var(--accent); color: #fff; }
+.icon-tool[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .icon-tool.disabled { opacity: 0.35; }
 
 /* ---------- Rules panel ---------- */
