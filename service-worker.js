@@ -1,4 +1,4 @@
-const CACHE_NAME = "solvers-notebook-v8";
+const CACHE_NAME = "solvers-notebook-v9";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,9 +15,15 @@ const ASSETS = [
   "./icons/icon-maskable-512.png",
 ];
 
+// Each asset is cached on its own: addAll rejects the whole install if any
+// single request fails, which would leave an older worker (and its older
+// files) in charge indefinitely. Failing to pre-cache one file only costs
+// offline access to it, since fetches go to the network first anyway.
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => Promise.all(ASSETS.map((asset) => cache.add(asset).catch(() => null))))
+      .then(() => self.skipWaiting())
   );
 });
 
