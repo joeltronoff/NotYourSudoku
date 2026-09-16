@@ -2664,6 +2664,36 @@
   loadSettings();
   timerDisplay.hidden = !!settings.hideTimer;
   renderLockTool();
+
+  // If the puzzle file didn't load, the menu would just be empty with no
+  // hint as to why. That mostly happens to an installed copy holding on to
+  // stale files, so say so and offer the one thing that fixes it.
+  if (!(window.PuzzleLibrary || []).length) {
+    const list = document.getElementById("menuVariantList");
+    list.innerHTML = `
+      <p class="menu-puzzle-empty">The puzzle library didn't load. If this app is installed on your
+      home screen it may be holding on to an old copy.</p>
+    `;
+    const button = document.createElement("button");
+    button.className = "btn";
+    button.textContent = "Clear the cache and reload";
+    button.addEventListener("click", async () => {
+      button.textContent = "Reloading…";
+      try {
+        if (window.caches) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+        if (navigator.serviceWorker) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(reg => reg.unregister()));
+        }
+      } catch (e) { /* reload anyway */ }
+      location.reload();
+    });
+    list.appendChild(button);
+  }
+
   if (loadState()) {
     renderConstraintOverlays();
     renderRulesPanel();
