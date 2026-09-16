@@ -218,13 +218,14 @@
 
   // Cell-shading palette for the "color" tool. Soft enough that given/user/
   // conflict text stays legible on top, but distinct from one another.
-  // Several colours on one cell are drawn as equal diagonal bands, so each
-  // one stays identifiable instead of blending into a new colour.
+  // Several colours on one cell are drawn as a pinwheel — equal wedges
+  // around the centre — so each colour keeps a share of every part of the
+  // cell instead of one being pushed into a corner.
   function shadeBackground(list) {
     if (list.length === 1) return CELL_COLORS[list[0]];
-    const step = 100 / list.length;
-    const stops = list.map((index, i) => `${CELL_COLORS[index]} ${i * step}% ${(i + 1) * step}%`);
-    return `linear-gradient(135deg, ${stops.join(", ")})`;
+    const step = 360 / list.length;
+    const stops = list.map((index, i) => `${CELL_COLORS[index]} ${i * step}deg ${(i + 1) * step}deg`);
+    return `conic-gradient(from -45deg, ${stops.join(", ")})`;
   }
 
   const CELL_COLORS = [
@@ -1665,7 +1666,7 @@
         const dot = document.createElementNS(SVG_NS, "circle");
         dot.setAttribute("cx", x1);
         dot.setAttribute("cy", y1);
-        dot.setAttribute("r", 0.7);
+        dot.setAttribute("r", 1.1);
         dot.setAttribute("class", "pen-dot");
         svg.appendChild(dot);
         continue;

@@ -337,7 +337,7 @@ button {
 .pen-svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .pen-line {
   stroke: var(--pen);
-  stroke-width: 0.55;
+  stroke-width: 0.95;
   stroke-linecap: round;
   fill: none;
 }
