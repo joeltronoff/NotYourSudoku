@@ -12,6 +12,32 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="icon" href="icons/icon-192.png" />
 <link rel="stylesheet" href="styles.css" />
+<script>
+// A script error during start-up used to leave a blank screen with nothing
+// to go on, which is indistinguishable from "the app is broken" and gave a
+// player no way to report what happened. Show the error instead, and offer
+// the reset page, since a stale cached file is the usual cause.
+window.addEventListener("error", (event) => {
+  if (document.getElementById("bootError")) return;
+  const box = document.createElement("div");
+  box.id = "bootError";
+  box.setAttribute("style",
+    "position:fixed;inset:0;z-index:9999;overflow:auto;padding:24px 20px;" +
+    "background:#14130F;color:#F3F0E7;font:15px/1.5 system-ui,sans-serif");
+  const where = (event.filename || "").split("/").pop() + ":" + event.lineno;
+  box.innerHTML =
+    "<h2 style='margin:0 0 8px;font-size:19px'>The app hit an error while loading</h2>" +
+    "<p style='color:#B9B3A3;margin:0 0 14px'>This is usually an old copy of a" +
+    " file left over on the device.</p>" +
+    "<pre style='background:#1E1C17;border:1px solid #333026;border-radius:8px;" +
+    "padding:12px;font-size:13px;white-space:pre-wrap;word-break:break-word'>" +
+    String(event.message) + "\n" + where + "</pre>" +
+    "<a href='reset.html' style='display:block;margin-top:16px;padding:14px;" +
+    "border-radius:10px;background:#C4622D;color:#fff;font-weight:600;" +
+    "text-align:center;text-decoration:none'>Clear the offline copy and reload</a>";
+  document.body.appendChild(box);
+});
+</script>
 </head>
 <body>
 

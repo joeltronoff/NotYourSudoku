@@ -1,7 +1,8 @@
-const CACHE_NAME = "solvers-notebook-v9";
+const CACHE_NAME = "solvers-notebook-v10";
 const ASSETS = [
   "./",
   "./index.html",
+  "./reset.html",
   "./styles.css",
   "./app.js",
   "./sudoku-engine.js",
@@ -44,6 +45,11 @@ self.addEventListener("activate", (event) => {
 // cache is just an offline fallback.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // version.json is how the app decides whether it is running stale files,
+  // so it must never come from this cache: a cached copy could report an
+  // old build to a new app and send it into a pointless refresh. Letting
+  // the request go straight to the browser keeps it honest.
+  if (new URL(event.request.url).pathname.endsWith("/version.json")) return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {

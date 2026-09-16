@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Reset Solver's Notebook</title>
+<style>
+  body {
+    margin: 0;
+    padding: 24px 20px 40px;
+    background: #14130F;
+    color: #F3F0E7;
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; color: #B9B3A3; }
+  pre {
+    background: #1E1C17;
+    border: 1px solid #333026;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #D8D3C4;
+  }
+  a.button, button {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 16px 0 0;
+    padding: 14px;
+    border: 0;
+    border-radius: 10px;
+    background: #C4622D;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+  }
+  .ok { color: #8FBF6B; }
+  .bad { color: #E07A5F; }
+</style>
+</head>
+<body>
+
+<h1>Reset Solver's Notebook</h1>
+<p>
+  This clears the offline copy of the app on this device and loads it fresh
+  from the server. Your puzzle progress, times and settings are kept — they
+  live separately and are not touched.
+</p>
+
+<pre id="log">Working…</pre>
+<div id="actions"></div>
+
+<script>
+// Deliberately standalone: no app files, no service worker, nothing shared.
+// If the app itself is broken by a bad cached copy, this page still has to
+// load and run, so it can only depend on itself.
+(async () => {
+  const log = document.getElementById("log");
+  const actions = document.getElementById("actions");
+  const lines = [];
+  const say = (text, cls) => {
+    lines.push(cls ? `<span class="${cls}">${text}</span>` : text);
+    log.innerHTML = lines.join("\n");
+  };
+
+  say("Device: " + navigator.userAgent);
+  say("Page: " + location.href);
+  say("Standalone (installed app): " +
+    (window.matchMedia("(display-mode: standalone)").matches ? "yes" : "no"));
+  say("");
+
+  // Service workers first. An old worker is the thing most likely to be
+  // serving stale files, and it keeps doing so until it is unregistered.
+  try {
+    const regs = navigator.serviceWorker
+      ? await navigator.serviceWorker.getRegistrations()
+      : [];
+    if (!regs.length) say("Service workers: none registered");
+    for (const reg of regs) {
+      const state = reg.active ? reg.active.state : "none";
+      await reg.unregister();
+      say(`Unregistered worker (scope ${reg.scope}, was ${state})`, "ok");
+    }
+  } catch (err) {
+    say("Service workers: " + err.message, "bad");
+  }
+
+  // Then every cache bucket, whatever it was named. Naming the old ones
+  // explicitly would miss versions that predate this page.
+  try {
+    const keys = window.caches ? await caches.keys() : [];
+    if (!keys.length) say("Caches: none");
+    for (const key of keys) {
+      const cache = await caches.open(key);
+      const count = (await cache.keys()).length;
+      await caches.delete(key);
+      say(`Deleted cache "${key}" (${count} files)`, "ok");
+    }
+  } catch (err) {
+    say("Caches: " + err.message, "bad");
+  }
+
+  // Confirm the server is actually reachable and serving the current app,
+  // so a network problem doesn't look like a cache problem.
+  try {
+    const res = await fetch("index.html?reset=" + Date.now(), { cache: "no-store" });
+    const text = await res.text();
+    say("");
+    say(`Fetched index.html: HTTP ${res.status}, ${text.length} bytes`);
+    say("Contains the hint panel: " +
+      (text.indexOf('id="hintOutput"') !== -1 ? "yes" : "no"),
+      text.indexOf('id="hintOutput"') !== -1 ? "ok" : "bad");
+  } catch (err) {
+    say("Could not reach the server: " + err.message, "bad");
+  }
+
+  say("");
+  say("Done. Open the app below.", "ok");
+
+  const link = document.createElement("a");
+  link.className = "button";
+  link.href = "index.html?reset=" + Date.now();
+  link.textContent = "Open Solver's Notebook";
+  actions.appendChild(link);
+})();
+</script>
+
+</body>
+</html>
