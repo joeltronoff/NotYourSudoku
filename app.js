@@ -877,6 +877,7 @@
     difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
+    resetHint();
     setInputMode("digit");
     startTimer();
     saveState();
@@ -937,6 +938,7 @@
     difficultyDisplay.textContent = entry.title;
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
+    resetHint();
     setInputMode("digit");
     timerDisplay.textContent = formatTime(state.seconds);
     startTimer();
@@ -1285,6 +1287,11 @@
     const svg = document.createElementNS(svgNS, "svg");
     svg.setAttribute("viewBox", "0 0 90 90");
     svg.setAttribute("class", "constraint-svg");
+    // Everything here is the puzzle's own clue art, so it all hangs off one
+    // group that the fog can clip (see applyFogClip).
+    const clueGroup = document.createElementNS(svgNS, "g");
+    clueGroup.setAttribute("class", "fog-clip-group");
+    svg.appendChild(clueGroup);
     const INSET = 0.7;
 
     function addLine(x1, y1, x2, y2) {
@@ -1294,7 +1301,7 @@
       line.setAttribute("x2", x2);
       line.setAttribute("y2", y2);
       line.setAttribute("class", "cage-line");
-      svg.appendChild(line);
+      clueGroup.appendChild(line);
     }
 
     if (hasCages) {
@@ -1331,7 +1338,7 @@
         text.setAttribute("y", tr * 10 + INSET + 1.9);
         text.setAttribute("class", "cage-sum");
         text.textContent = cage.sum == null ? "" : cage.sum;
-        svg.appendChild(text);
+        clueGroup.appendChild(text);
       });
     }
 
@@ -1345,7 +1352,7 @@
         circle.setAttribute("cy", cy);
         circle.setAttribute("r", 0.85);
         circle.setAttribute("class", dot.kind === "white" ? "kropki-dot kropki-white" : "kropki-dot kropki-black");
-        svg.appendChild(circle);
+        clueGroup.appendChild(circle);
       });
     }
 
@@ -1359,13 +1366,13 @@
         bg.setAttribute("cy", cy);
         bg.setAttribute("r", 1.6);
         bg.setAttribute("class", "xv-bg");
-        svg.appendChild(bg);
+        clueGroup.appendChild(bg);
         const text = document.createElementNS(svgNS, "text");
         text.setAttribute("x", cx);
         text.setAttribute("y", cy);
         text.setAttribute("class", "xv-label");
         text.textContent = pair.kind;
-        svg.appendChild(text);
+        clueGroup.appendChild(text);
       });
     }
 
@@ -1398,6 +1405,7 @@
       cell.textContent = cols[c] == null ? "" : cols[c];
       sandwichColCluesEl.appendChild(cell);
     }
+    renderOutsideCluesFog(computeFogRevealed());
   }
 
   // Little killer clues sit just outside whichever edge/corner their
@@ -1438,6 +1446,7 @@
       el.appendChild(sum);
       littleKillerOverlayEl.appendChild(el);
     }
+    renderOutsideCluesFog(computeFogRevealed());
   }
 
   // Lines, arrows, diagonals and odd/even markers are drawn once, as a
@@ -1462,7 +1471,7 @@
     svg.setAttribute("viewBox", "0 0 90 90");
     svg.setAttribute("class", "deco-svg");
     const group = document.createElementNS(SVG_NS, "g");
-    group.setAttribute("id", "decoGroup");
+    group.setAttribute("class", "fog-clip-group");
     svg.appendChild(group);
 
     const add = (tag, attrs, className) => {
@@ -1583,10 +1592,15 @@
 
   // Under fog, decorations are only visible on revealed cells -- clip the
   // whole overlay to those cells rather than redrawing it every move.
-  function renderDecorationFog(fogRevealed) {
-    const group = decoOverlayEl.querySelector("#decoGroup");
+  // Clips one overlay to the cells currently out of the fog. Every layer
+  // carrying the puzzle's own clues has to go through this: a cage, a dot
+  // or an X sitting on a fogged cell is information the player hasn't
+  // earned yet. (Pen marks are the player's own, so they stay visible.)
+  function applyFogClip(container, fogRevealed, clipId) {
+    const svg = container.querySelector("svg");
+    if (!svg) return;
+    const group = svg.querySelector(".fog-clip-group");
     if (!group) return;
-    const svg = decoOverlayEl.querySelector("svg");
     const old = svg.querySelector("clipPath");
     if (old) old.remove();
     if (!fogRevealed) {
@@ -1594,7 +1608,7 @@
       return;
     }
     const clip = document.createElementNS(SVG_NS, "clipPath");
-    clip.setAttribute("id", "decoFogClip");
+    clip.setAttribute("id", clipId);
     for (const key of fogRevealed) {
       const [r, c] = key.split(",").map(Number);
       const rect = document.createElementNS(SVG_NS, "rect");
@@ -1605,7 +1619,30 @@
       clip.appendChild(rect);
     }
     svg.insertBefore(clip, svg.firstChild);
-    group.setAttribute("clip-path", "url(#decoFogClip)");
+    group.setAttribute("clip-path", `url(#${clipId})`);
+  }
+
+  function renderDecorationFog(fogRevealed) {
+    applyFogClip(decoOverlayEl, fogRevealed, "decoFogClip");
+    applyFogClip(constraintOverlayEl, fogRevealed, "cluesFogClip");
+    renderOutsideCluesFog(fogRevealed);
+  }
+
+  // Sandwich and little-killer clues sit outside the grid but describe a
+  // line of cells inside it; while any of those cells is still fogged the
+  // clue would give away more than the player can see.
+  function renderOutsideCluesFog(fogRevealed) {
+    const visible = (cells) => !fogRevealed || cells.every(([r, c]) => fogRevealed.has(`${r},${c}`));
+    sandwichRowCluesEl.querySelectorAll(".sandwich-clue").forEach((el, r) => {
+      el.style.visibility = visible(Array.from({ length: 9 }, (_, c) => [r, c])) ? "" : "hidden";
+    });
+    sandwichColCluesEl.querySelectorAll(".sandwich-clue").forEach((el, c) => {
+      el.style.visibility = visible(Array.from({ length: 9 }, (_, r) => [r, c])) ? "" : "hidden";
+    });
+    littleKillerOverlayEl.querySelectorAll(".little-killer-clue").forEach((el, i) => {
+      const clue = (state.littleKiller || [])[i];
+      el.style.visibility = clue && visible(clue.cells) ? "" : "hidden";
+    });
   }
 
   // ---------------- Pen marks ----------------
@@ -1734,6 +1771,7 @@
   }
 
   function inputNumber(n) {
+    resetHint();
     // Pen mode draws on the grid; the keypad has nothing to do there.
     if (state.inputMode === "pen") return;
     if (state.selected.length === 0 || state.won) return;
@@ -1802,6 +1840,7 @@
   }
 
   function eraseCell() {
+    resetHint();
     // In pen mode, erase clears the drawing rather than the cells.
     if (state.inputMode === "pen") {
       if (state.pen.length === 0) return;
@@ -1837,6 +1876,7 @@
   }
 
   function restore(snap) {
+    resetHint();
     state.grid = snap.grid;
     state.cornerNotes = snap.cornerNotes;
     state.centerNotes = snap.centerNotes;
@@ -1878,6 +1918,7 @@
     state.hintCell = null;
     state.selected = [];
     forceFullCheck = false;
+    resetHint();
     timerDisplay.textContent = formatTime(0);
     winOverlay.classList.remove("show");
     hintOutput.classList.remove("show");
@@ -2038,26 +2079,193 @@
   }
 
   function updateHintAvailability() {
-    hintBtn.classList.toggle("disabled", isVariantActive());
+    hintBtn.classList.remove("disabled");
   }
 
-  function showHint(level) {
-    if (isVariantActive()) {
-      hintOutput.innerHTML = `<span class="hint-technique">Hint</span>Hints aren't available yet for variant puzzles — the classic solver doesn't know about cages or dots, so its suggestions could be wrong here.`;
-      hintOutput.classList.add("show");
-      return;
+  // ---------------- Hints ----------------
+  // Hints reason with the same solver the importer used to verify these
+  // puzzles, so they understand cages, thermometers, whispers and the rest
+  // rather than only classic sudoku. They also come a layer at a time:
+  // first what kind of step is available and where, then which digit, then
+  // the cell itself -- so a nudge stays a nudge.
+  const BOX_NAME = i => `box ${i + 1}`;
+  function houseName(kind, index) {
+    if (kind === "row") return `row ${index + 1}`;
+    if (kind === "col") return `column ${index + 1}`;
+    return BOX_NAME(index);
+  }
+
+  // Which of this puzzle's rules touch a given cell, named for the
+  // explanation ("its cage and the thermometer already rule out ...").
+  const LINE_NAMES = {
+    thermo: "thermometer", whispers: "whispers line", renban: "renban line",
+    palindrome: "palindrome", between: "between line", regionsum: "region sum line",
+    entropic: "entropic line", modular: "modular line", nabner: "nabner line",
+  };
+  function rulesTouching(r, c) {
+    const names = [];
+    const here = ([cr, cc]) => cr === r && cc === c;
+    if ((state.cages || []).some(cage => cage.cells.some(here))) names.push("its cage");
+    for (const line of state.lines || []) {
+      if (line.cells.some(here)) {
+        const label = line.kind === "whispers" && line.diff === 4 ? "Dutch whispers line" : LINE_NAMES[line.kind];
+        if (label && !names.includes(`the ${label}`)) names.push(`the ${label}`);
+      }
     }
-    const hint = getHint(state.grid, level);
-    state.hintCell = hint.cell || null;
-    let html = `<span class="hint-technique">${hint.technique}</span>${hint.explanation}`;
-    if (level === "nudge" && hint.cell) {
-      html += ` <button class="hint-reveal-link" id="hintRevealLink">Show the full move</button>`;
+    if ((state.arrows || []).some(a => here(a.circle) || a.cells.some(here))) names.push("the arrow");
+    if ((state.kropki || []).some(d => here(d.a) || here(d.b))) names.push("a kropki dot");
+    if ((state.xv || []).some(x => here(x.a) || here(x.b))) names.push("an X/V pair");
+    if ((state.quadruples || []).some(q => q.cells.some(here))) names.push("a quadruple");
+    if ((state.extraRegions || []).some(region => region.some(here))) names.push("its extra region");
+    if ((state.oddEven || []).some(o => here(o.cell))) names.push("its odd/even marker");
+    if ((state.littleKiller || []).some(k => k.cells.some(here))) names.push("the diagonal clue");
+    if (state.antiKnight) names.push("the knight's-move rule");
+    if (state.antiKing) names.push("the king's-move rule");
+    if (state.nonConsecutive) names.push("the non-consecutive rule");
+    if (state.disjointGroups) names.push("the disjoint groups rule");
+    if (state.diagonals && (r === c || r + c === 8)) names.push("the marked diagonal");
+    return names;
+  }
+
+  // Runs the solver over the board as it stands and returns the easiest
+  // next step, or an explanation of why there isn't one.
+  function findHint() {
+    const solver = window.VariantSolver;
+    if (!solver) return { kind: "unavailable" };
+    const entry = {
+      givens: state.grid,
+      cages: state.cages, kropki: state.kropki, kropkiNegative: state.kropkiNegative,
+      lines: state.lines, arrows: state.arrows, antiKnight: state.antiKnight,
+      antiKing: state.antiKing, nonConsecutive: state.nonConsecutive,
+      disjointGroups: state.disjointGroups, extraRegions: state.extraRegions,
+      quadruples: state.quadruples, sandwich: state.sandwich, xv: state.xv,
+      littleKiller: state.littleKiller, diagonals: state.diagonals, oddEven: state.oddEven,
+    };
+    const model = solver.buildModel(entry);
+    const cand = new Array(81);
+    for (let i = 0; i < 81; i++) {
+      const r = Math.floor(i / 9), c = i % 9;
+      cand[i] = state.grid[r][c] ? solver.bit(state.grid[r][c]) : model.parity[i];
     }
-    hintOutput.innerHTML = html;
+    if (!solver.propagate(model, cand)) return { kind: "contradiction" };
+
+    // A cell with one candidate left.
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (state.grid[r][c] !== 0) continue;
+        const mask = cand[r * 9 + c];
+        if (solver.popcount(mask) === 1) {
+          return { kind: "single", cell: [r, c], value: solver.lowestDigit(mask) };
+        }
+      }
+    }
+
+    // A digit with only one home left in some house.
+    const houses = [];
+    for (let r = 0; r < 9; r++) houses.push({ kind: "row", index: r, cells: Array.from({ length: 9 }, (_, c) => [r, c]) });
+    for (let c = 0; c < 9; c++) houses.push({ kind: "col", index: c, cells: Array.from({ length: 9 }, (_, r) => [r, c]) });
+    for (let b = 0; b < 9; b++) {
+      const br = Math.floor(b / 3) * 3, bc = (b % 3) * 3;
+      const cells = [];
+      for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) cells.push([br + dr, bc + dc]);
+      houses.push({ kind: "box", index: b, cells });
+    }
+    for (const house of houses) {
+      for (let d = 1; d <= 9; d++) {
+        if (house.cells.some(([r, c]) => state.grid[r][c] === d)) continue;
+        const spots = house.cells.filter(([r, c]) => state.grid[r][c] === 0 && (cand[r * 9 + c] & solver.bit(d)));
+        if (spots.length === 1) {
+          return { kind: "hidden", cell: spots[0], value: d, house };
+        }
+      }
+    }
+
+    // Nothing that simple: point at the cell with the fewest options left.
+    let best = null;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (state.grid[r][c] !== 0) continue;
+        const count = solver.popcount(cand[r * 9 + c]);
+        if (!best || count < best.count) best = { cell: [r, c], count, mask: cand[r * 9 + c] };
+      }
+    }
+    if (!best) return { kind: "solved" };
+    return { kind: "hard", cell: best.cell, count: best.count, value: state.solution ? state.solution[best.cell[0]][best.cell[1]] : null };
+  }
+
+  // Three levels: what and where, then which digit, then the cell itself.
+  let hintStep = null;
+  function resetHint() {
+    hintStep = null;
+    if (state) state.hintCell = null;
+  }
+
+  function showHint() {
+    if (!hintStep) hintStep = { hint: findHint(), level: 1 };
+    else hintStep.level = Math.min(3, hintStep.level + 1);
+
+    const { hint, level } = hintStep;
+    const [r, c] = hint.cell || [];
+    let technique = "Hint";
+    let text = "";
+    let canGoDeeper = false;
+
+    if (hint.kind === "unavailable") {
+      text = "The hint engine didn't load — reload the page and try again.";
+    } else if (hint.kind === "contradiction") {
+      technique = "Stuck";
+      text = "Something on the board breaks the rules, so there's no next step to find. Use Check to see which cells clash.";
+    } else if (hint.kind === "solved") {
+      technique = "Done";
+      text = "Every cell is filled.";
+    } else if (hint.kind === "single") {
+      technique = "One digit left";
+      const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const why = rulesTouching(r, c);
+      if (level === 1) {
+        text = `A cell in ${BOX_NAME(box)} has only one digit left${why.length ? `, once you account for ${why.slice(0, 2).join(" and ")}` : ""}.`;
+        canGoDeeper = true;
+      } else if (level === 2) {
+        text = `The digit is ${hint.value}. It goes somewhere in ${BOX_NAME(box)}.`;
+        canGoDeeper = true;
+      } else {
+        text = `Row ${r + 1}, column ${c + 1} can only be ${hint.value} — every other digit is ruled out by its row, column and box${why.length ? `, plus ${why.join(", ")}` : ""}.`;
+        state.hintCell = [r, c];
+      }
+    } else if (hint.kind === "hidden") {
+      technique = "Only one home";
+      const where = houseName(hint.house.kind, hint.house.index);
+      if (level === 1) {
+        text = `In ${where}, one digit has only one cell left to go in.`;
+        canGoDeeper = true;
+      } else if (level === 2) {
+        text = `Look for where ${hint.value} can go in ${where}.`;
+        canGoDeeper = true;
+      } else {
+        text = `${hint.value} can only go in row ${r + 1}, column ${c + 1} of ${where} — every other cell there is ruled out.`;
+        state.hintCell = [r, c];
+      }
+    } else if (hint.kind === "hard") {
+      technique = "Harder step";
+      if (level === 1) {
+        text = `No cell is down to a single digit yet. The tightest cell has ${hint.count} options left.`;
+        canGoDeeper = true;
+      } else if (level === 2) {
+        text = `Try row ${r + 1}, column ${c + 1} — it has the fewest options (${hint.count}).`;
+        state.hintCell = [r, c];
+        canGoDeeper = hint.value != null;
+      } else {
+        text = `Row ${r + 1}, column ${c + 1} is ${hint.value}. Working out why needs a technique this hint engine doesn't explain yet.`;
+        state.hintCell = [r, c];
+      }
+    }
+
+    hintOutput.innerHTML = `<span class="hint-technique">${technique}</span>${text}`
+      + (canGoDeeper ? ` <button class="hint-reveal-link" id="hintRevealLink">Tell me more</button>` : "");
     hintOutput.classList.add("show");
     render();
-    const revealLink = document.getElementById("hintRevealLink");
-    if (revealLink) revealLink.addEventListener("click", () => showHint("reveal"));
+    const link = document.getElementById("hintRevealLink");
+    if (link) link.addEventListener("click", showHint);
   }
 
   // ---------------- Input mode (digit / corner notes / center notes / color) ----------------
@@ -2100,7 +2308,7 @@
   document.getElementById("undoBtn").addEventListener("click", undo);
   document.getElementById("eraseBtn").addEventListener("click", eraseCell);
 
-  hintBtn.addEventListener("click", () => showHint("nudge"));
+  hintBtn.addEventListener("click", () => showHint());
 
   document.getElementById("checkBtn").addEventListener("click", () => {
     forceFullCheck = true;

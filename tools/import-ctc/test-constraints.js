@@ -7,8 +7,10 @@
 const { loadApp, appAcceptsSolution } = require('./app-engine');
 const { countSolutions } = require('./solver');
 
-const { engine, library } = loadApp();
-const SOLUTION = library.find(e => e.id === 'killer-1').solution;
+// Any real solved grid will do; the imported library is the one we have.
+const { engine, library } = loadApp(['puzzles-ctc.js']);
+const SOLUTION = library.find(e => e.solution && e.givens.flat().filter(Boolean).length > 20).solution
+  || library[0].solution;
 const empty = () => Array.from({ length: 9 }, () => Array(9).fill(0));
 const at = ([r, c]) => SOLUTION[r][c];
 

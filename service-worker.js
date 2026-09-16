@@ -1,10 +1,11 @@
-const CACHE_NAME = "solvers-notebook-v7";
+const CACHE_NAME = "solvers-notebook-v8";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./sudoku-engine.js",
+  "./variant-solver.js",
   "./puzzles.js",
   "./puzzles-ctc.js",
   "./manifest.json",
