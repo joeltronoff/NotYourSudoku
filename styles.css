@@ -300,15 +300,24 @@ button {
   font-family: var(--serif);
   font-variant-numeric: tabular-nums;
 }
-.line-path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+/* Constraint lines are slightly translucent so the grid underneath still
+   reads through them — you can see which cells a line actually covers
+   without the line being washed out. Digits sit in a layer above, so they
+   stay fully opaque. */
+.line-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-opacity: 0.72;
+}
 .line-thermo { stroke: #CFC7B8; stroke-width: 1.4; }
-.thermo-bulb { fill: #CFC7B8; }
+.thermo-bulb { fill: #CFC7B8; fill-opacity: 0.72; }
 .line-whispers { stroke: #6FA85C; stroke-width: 1.9; }
 .line-renban { stroke: #B98FD1; stroke-width: 1.9; }
 .line-palindrome { stroke: #A9A296; stroke-width: 1.9; }
 .line-whispers-dutch { stroke: #D98A3D; stroke-width: 1.9; }
 .line-between { stroke: #9AA3AD; stroke-width: 1.5; }
-.between-end { fill: none; stroke: #9AA3AD; stroke-width: 0.55; }
+.between-end { fill: none; stroke: #9AA3AD; stroke-width: 0.55; stroke-opacity: 0.72; }
 .line-regionsum { stroke: #5B8FD6; stroke-width: 1.9; }
 .line-entropic { stroke: #46A9A2; stroke-width: 1.9; }
 .line-modular { stroke: #A9764E; stroke-width: 1.9; }
@@ -326,9 +335,11 @@ button {
   text-anchor: middle;
   dominant-baseline: central;
 }
-.arrow-line { stroke: var(--ink-soft); stroke-width: 0.5; }
-.arrow-head { fill: none; stroke: var(--ink-soft); stroke-width: 0.5; stroke-linecap: round; stroke-linejoin: round; }
-.arrow-circle { fill: none; stroke: var(--ink-soft); stroke-width: 0.6; }
+/* Arrows are thin enough to hide almost nothing, so they keep more of
+   their weight than the wide lines do. */
+.arrow-line { stroke: var(--ink-soft); stroke-width: 0.5; stroke-opacity: 0.88; }
+.arrow-head { fill: none; stroke: var(--ink-soft); stroke-width: 0.5; stroke-opacity: 0.88; stroke-linecap: round; stroke-linejoin: round; }
+.arrow-circle { fill: none; stroke: var(--ink-soft); stroke-width: 0.6; stroke-opacity: 0.88; }
 .diagonal-line { stroke: var(--accent-soft); stroke-width: 3.2; stroke-linecap: butt; }
 .oddeven-odd { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; }
 .oddeven-even { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; rx: 0.8; }
