@@ -703,6 +703,50 @@ button {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* Digit filter: each digit cycles neutral -> required -> ruled out, so you
+   can narrow the combination list to what the grid actually allows. */
+.calc-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.calc-filter-digits { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.calc-digit {
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  border: 1px solid var(--paper-line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--sans);
+  font-variant-numeric: tabular-nums;
+  position: relative;
+}
+.calc-digit.include {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.calc-digit.exclude {
+  color: var(--error);
+  border-color: var(--error);
+  text-decoration: line-through;
+  background: var(--error-soft);
+}
+.calc-filter-clear {
+  border: none;
+  background: none;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 4px 2px;
+}
+
 .killer-calc-hint {
   margin: 0;
   font-size: 11.5px;

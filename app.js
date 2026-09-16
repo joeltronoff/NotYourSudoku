@@ -1931,21 +1931,70 @@
   const calcCellsValueEl = document.getElementById("calcCellsValue");
   const calcSumValueEl = document.getElementById("calcSumValue");
   const killerCalcCombosEl = document.getElementById("killerCalcCombos");
+  const calcDigitFilterEl = document.getElementById("calcDigitFilter");
+  const calcFilterClearEl = document.getElementById("calcFilterClear");
+  const calcFilterHintEl = document.getElementById("calcFilterHint");
+  calcFilterClearEl.addEventListener("click", () => {
+    calcInclude.clear();
+    calcExclude.clear();
+    renderKillerCalc();
+  });
   let calcCells = 3;
   let calcSum = 15;
+
+  // Digits the cage is known to contain / known not to contain. Both are
+  // filters on the combination list, not extra sums: a digit you've ruled
+  // out in the grid usually rules out half the combinations here too.
+  const calcInclude = new Set();
+  const calcExclude = new Set();
+
+  function renderDigitFilter() {
+    calcDigitFilterEl.innerHTML = "";
+    for (let d = 1; d <= 9; d++) {
+      const btn = document.createElement("button");
+      btn.className = "calc-digit";
+      btn.textContent = d;
+      const required = calcInclude.has(d);
+      const ruledOut = calcExclude.has(d);
+      if (required) btn.classList.add("include");
+      if (ruledOut) btn.classList.add("exclude");
+      btn.setAttribute("aria-label",
+        `${d}: ${required ? "required" : ruledOut ? "ruled out" : "not filtered"}`);
+      btn.addEventListener("click", () => {
+        // neutral -> required -> ruled out -> neutral
+        if (required) { calcInclude.delete(d); calcExclude.add(d); }
+        else if (ruledOut) { calcExclude.delete(d); }
+        else { calcInclude.add(d); }
+        renderKillerCalc();
+      });
+      calcDigitFilterEl.appendChild(btn);
+    }
+    calcFilterClearEl.hidden = calcInclude.size === 0 && calcExclude.size === 0;
+  }
 
   function renderKillerCalc() {
     calcCellsValueEl.textContent = calcCells;
     calcSumValueEl.textContent = calcSum;
-    const combos = computeKillerCombos(calcCells, calcSum);
+    renderDigitFilter();
+    const all = computeKillerCombos(calcCells, calcSum);
+    const combos = all.filter(combo => (
+      [...calcInclude].every(d => combo.includes(d)) && [...calcExclude].every(d => !combo.includes(d))
+    ));
     killerCalcCombosEl.innerHTML = "";
     if (combos.length === 0) {
       const p = document.createElement("p");
       p.className = "killer-calc-empty";
-      p.textContent = "No combination of that many cells sums to that total.";
+      p.textContent = all.length === 0
+        ? "No combination of that many cells sums to that total."
+        : "No combination left once those digits are required or ruled out.";
       killerCalcCombosEl.appendChild(p);
       return;
     }
+    // Digits shared by every remaining combination are forced in the cage.
+    const forced = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(d => combos.every(combo => combo.includes(d)));
+    calcFilterHintEl.textContent = combos.length < all.length
+      ? `${combos.length} of ${all.length} combinations left${forced.length ? ` — every one uses ${forced.join(", ")}` : ""}.`
+      : "Tap a digit once to require it, twice to rule it out. Tap a combo to cross it out.";
     combos.forEach(combo => {
       const btn = document.createElement("button");
       btn.className = "combo-chip";

@@ -229,7 +229,11 @@
             </div>
           </div>
         </div>
-        <p class="killer-calc-hint">Tap a combo to cross it out once you know it's not possible.</p>
+        <div class="calc-filter">
+          <div class="calc-filter-digits" id="calcDigitFilter"></div>
+          <button class="calc-filter-clear" id="calcFilterClear" hidden>Clear</button>
+        </div>
+        <p class="killer-calc-hint" id="calcFilterHint">Tap a digit once to require it, twice to rule it out. Tap a combo to cross it out.</p>
         <div class="killer-calc-combos" id="killerCalcCombos"></div>
       </div>
 
