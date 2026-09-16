@@ -11,6 +11,11 @@
       lines: state.lines,
       arrows: state.arrows,
       antiKnight: state.antiKnight,
+      antiKing: state.antiKing,
+      nonConsecutive: state.nonConsecutive,
+      disjointGroups: state.disjointGroups,
+      extraRegions: state.extraRegions,
+      quadruples: state.quadruples,
       sandwich: state.sandwich,
       xv: state.xv,
       littleKiller: state.littleKiller,
@@ -37,18 +42,48 @@
     if (!state.fog) return null;
     const seed = state.fog.reveal || [];
     const radius = state.fog.radius || 1;
+    // How far the starting seed itself lights up. Our own generated puzzles
+    // light a full neighborhood around each seed cell; imported puzzles use
+    // the setter's own "deep fog" convention (seedRadius 0), where a fog
+    // light or a given lights only its own cell and the fog opens up solely
+    // through cells the player solves.
+    const seedRadius = state.fog.seedRadius == null ? radius : state.fog.seedRadius;
     const revealed = new Set(seed.map(([r, c]) => `${r},${c}`));
-    function lightNeighbors(r, c) {
-      for (let dr = -radius; dr <= radius; dr++) {
-        for (let dc = -radius; dc <= radius; dc++) {
+    function lightNeighbors(r, c, reach = radius) {
+      for (let dr = -reach; dr <= reach; dr++) {
+        for (let dc = -reach; dc <= reach; dc++) {
           const nr = r + dr, nc = c + dc;
           if (nr < 0 || nr > 8 || nc < 0 || nc > 8) continue;
           revealed.add(`${nr},${nc}`);
         }
       }
     }
-    for (const [r, c] of seed) {
-      if (state.grid[r][c] !== 0 && state.grid[r][c] === state.solution[r][c]) lightNeighbors(r, c);
+    if (seedRadius > 0) {
+      for (const [r, c] of seed) {
+        if (state.grid[r][c] !== 0 && state.grid[r][c] === state.solution[r][c]) lightNeighbors(r, c, seedRadius);
+      }
+    }
+
+    // Trigger links: some puzzles don't clear the fog around a solved cell
+    // at all. Instead, solving particular cells uncovers a region somewhere
+    // else on the grid. A puzzle uses either this or the neighborhood rule
+    // below, never both -- so when links are present they're the whole
+    // mechanic.
+    const links = state.fog.links || [];
+    if (links.length > 0) {
+      const isCorrect = (r, c) => state.grid[r][c] !== 0 && state.grid[r][c] === state.solution[r][c];
+      let linkChanged = true;
+      while (linkChanged) {
+        linkChanged = false;
+        for (const link of links) {
+          if (!link.trigger.every(([r, c]) => isCorrect(r, c))) continue;
+          for (const [r, c] of link.reveal) {
+            const k = `${r},${c}`;
+            if (!revealed.has(k)) { revealed.add(k); linkChanged = true; }
+          }
+        }
+      }
+      return revealed;
     }
     let changed = true;
     while (changed) {
@@ -125,6 +160,11 @@
 
   // ---------------- Variant menu metadata ----------------
   const VARIANT_INFO = {
+    recommended: {
+      title: "Recommended",
+      blurb: "A mixed tour of the library, ordered from easiest to hardest.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l2.6 5.5 6 .72-4.43 4.16 1.16 5.92L12 16.6l-5.33 2.9 1.16-5.92L3.4 9.42l6-.72z" fill="currentColor" fill-opacity="0.18"/></svg>',
+    },
     killer: {
       title: "Killer Cages",
       blurb: "Dashed cages sum to a target, with no repeated digit inside.",
@@ -170,6 +210,31 @@
       blurb: "The grid starts hidden. Correct digits burn off the fog around them, one patch at a time.",
       icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15c1-3.5 3.6-6 7-6 2 0 3.3 1 4.5 2"/><path d="M9 18c1.3-2.4 3.4-4 6-4 3 0 5 2 6 4.5"/><circle cx="17" cy="8" r="2.4" fill="currentColor" stroke="none"/></svg>',
     },
+    antiking: {
+      title: "Anti-King",
+      blurb: "No two cells touching diagonally may repeat a digit.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M8 8l-2-2M16 8l2-2M8 16l-2 2M16 16l2 2" stroke-dasharray="2 2"/></svg>',
+    },
+    nonconsecutive: {
+      title: "Non-Consecutive",
+      blurb: "Cells sharing an edge can't hold consecutive digits.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="8" height="6" rx="1"/><rect x="13" y="9" width="8" height="6" rx="1"/><path d="M12 7v10" stroke-dasharray="2 2"/></svg>',
+    },
+    disjoint: {
+      title: "Disjoint Groups",
+      blurb: "Same position in every box: each digit once across all nine.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M9.5 3.5v17M14.5 3.5v17M3.5 9.5h17M3.5 14.5h17"/><circle cx="6.5" cy="6.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="17.5" cy="17.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
+    },
+    extraregions: {
+      title: "Extra Regions",
+      blurb: "Shaded regions hold every digit 1–9, just like a box.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="M7 7h10v4H7zM7 13h5v4H7z" fill="currentColor" fill-opacity="0.25"/></svg>',
+    },
+    quadruple: {
+      title: "Quadruples",
+      blurb: "A circle on a corner lists digits that appear in those four cells.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M12 4v16" stroke-opacity="0.45"/><circle cx="12" cy="12" r="4.5" fill="var(--paper)"/></svg>',
+    },
     // Hand-picked classic (rules-only) puzzles from the library, as opposed
     // to the generated ones dealt from the Classic card above.
     classic: {
@@ -183,6 +248,7 @@
   let timerInterval = null;
 
   const boardEl = document.getElementById("boardGrid");
+  const digitsEl = document.getElementById("boardDigits");
   const numpadEl = document.getElementById("mobileNumpad");
   const timerDisplay = document.getElementById("timerDisplay");
   const difficultyDisplay = document.getElementById("difficultyDisplay");
@@ -197,17 +263,22 @@
   const variantMenuEl = document.getElementById("variantMenu");
   const menuContinueEl = document.getElementById("menuContinue");
 
+  // Leaving the board pauses the clock (that's what the pause button in the
+  // tool row does); coming back to it starts the clock again.
   function showGame() {
     mainMenuEl.hidden = true;
     variantMenuEl.hidden = true;
     titlebarEl.hidden = false;
     layoutEl.hidden = false;
+    if (state && !state.won) startTimer();
   }
   function showMenu() {
     variantMenuEl.hidden = true;
     titlebarEl.hidden = true;
     layoutEl.hidden = true;
     mainMenuEl.hidden = false;
+    clearInterval(timerInterval);
+    if (state) saveState();
     renderMainMenu();
   }
   function showVariantMenu(variantKey) {
@@ -225,6 +296,52 @@
   // entries just keep using the older `variant` string field.
   function entryVariants(entry) {
     return entry.variants || [entry.variant];
+  }
+
+  // ---------------- Recommended ----------------
+  // A tour through the whole library rather than one constraint: for each
+  // difficulty from 1 star up, take a few puzzles, rotating through the
+  // kinds of puzzle available at that level so consecutive picks aren't all
+  // the same variant. The result is ordered easiest to hardest, and stays
+  // the same between visits (ties break on id, not chance).
+  const RECOMMENDED_PER_STAR = 6;
+  function recommendedEntries() {
+    const byStars = new Map();
+    for (const entry of window.PuzzleLibrary || []) {
+      const stars = Math.max(1, Math.min(10, entry.stars || 5));
+      if (!byStars.has(stars)) byStars.set(stars, []);
+      byStars.get(stars).push(entry);
+    }
+
+    const picked = [];
+    for (let stars = 1; stars <= 10; stars++) {
+      const pool = (byStars.get(stars) || []).slice().sort((a, b) => a.id.localeCompare(b.id));
+      const groups = new Map();
+      for (const entry of pool) {
+        const key = entryVariants(entry).join("+");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(entry);
+      }
+      const keys = [...groups.keys()].sort();
+      let taken = 0, i = 0;
+      while (taken < RECOMMENDED_PER_STAR && keys.length > 0) {
+        const key = keys[i % keys.length];
+        const list = groups.get(key);
+        if (list.length === 0) {
+          keys.splice(i % keys.length, 1);
+          continue;
+        }
+        picked.push(list.shift());
+        taken++;
+        i++;
+      }
+    }
+    return picked;
+  }
+
+  function entriesForVariant(key) {
+    if (key === "recommended") return recommendedEntries();
+    return (window.PuzzleLibrary || []).filter(e => entryVariants(e).includes(key));
   }
 
   function renderMainMenu() {
@@ -247,11 +364,7 @@
       });
     });
 
-    const listEl = document.getElementById("menuVariantList");
-    listEl.innerHTML = "";
-    Object.keys(VARIANT_INFO).forEach(key => {
-      const entries = byVariant[key] || [];
-      if (entries.length === 0) return;
+    const makeCard = (key, entries) => {
       const info = VARIANT_INFO[key];
       const solvedCount = entries.filter(e => progress.completed.includes(e.id)).length;
       const card = document.createElement("button");
@@ -267,7 +380,22 @@
         </div>
       `;
       card.addEventListener("click", () => showVariantMenu(key));
-      listEl.appendChild(card);
+      return card;
+    };
+
+    const recommended = recommendedEntries();
+    const recommendedEl = document.getElementById("menuRecommended");
+    recommendedEl.innerHTML = "";
+    recommendedEl.parentElement.hidden = recommended.length === 0;
+    if (recommended.length > 0) recommendedEl.appendChild(makeCard("recommended", recommended));
+
+    const listEl = document.getElementById("menuVariantList");
+    listEl.innerHTML = "";
+    Object.keys(VARIANT_INFO).forEach(key => {
+      if (key === "recommended") return;
+      const entries = byVariant[key] || [];
+      if (entries.length === 0) return;
+      listEl.appendChild(makeCard(key, entries));
     });
   }
 
@@ -302,15 +430,30 @@
     document.getElementById("variantMenuBlurb").textContent = info.blurb;
     document.querySelectorAll("#menuSortRow .chip").forEach(chip => {
       chip.classList.toggle("active", chip.dataset.sort === variantMenuSort);
+      // The recommended list's own order is a difficulty ramp, not date order.
+      if (chip.dataset.sort === "default") chip.textContent = key === "recommended" ? "Mixed" : "Newest";
     });
 
     const progress = loadProgress();
-    let entries = (window.PuzzleLibrary || []).filter(e => entryVariants(e).includes(key));
+    let entries = entriesForVariant(key);
     if (variantMenuSort === "easiest") entries = entries.slice().sort((a, b) => (a.stars || 0) - (b.stars || 0));
     else if (variantMenuSort === "hardest") entries = entries.slice().sort((a, b) => (b.stars || 0) - (a.stars || 0));
     else if (variantMenuSort === "unsolved") entries = entries.filter(e => !progress.completed.includes(e.id));
+    // Genuinely Approachable Sudoku puzzles, easiest first.
+    else if (variantMenuSort === "gas") {
+      entries = entries.filter(e => e.source && e.source.gas)
+        .sort((a, b) => (a.stars || 0) - (b.stars || 0) || b.source.gas - a.source.gas);
+    }
     const listEl = document.getElementById("menuPuzzleList");
     listEl.innerHTML = "";
+    if (entries.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "menu-puzzle-empty";
+      empty.textContent = variantMenuSort === "gas"
+        ? "No GAS puzzles in this category yet."
+        : "Nothing here — every puzzle in this category is solved.";
+      listEl.appendChild(empty);
+    }
     entries.forEach(entry => {
       const solved = progress.completed.includes(entry.id);
       const otherVariants = entryVariants(entry).filter(v => v !== key);
@@ -363,6 +506,11 @@
       lines: [],
       arrows: [],
       antiKnight: false,
+      antiKing: false,
+      nonConsecutive: false,
+      disjointGroups: false,
+      extraRegions: [],
+      quadruples: [],
       sandwich: null,
       xv: [],
       littleKiller: [],
@@ -411,6 +559,11 @@
       lines: entry.lines || [],
       arrows: entry.arrows || [],
       antiKnight: entry.antiKnight || false,
+      antiKing: entry.antiKing || false,
+      nonConsecutive: entry.nonConsecutive || false,
+      disjointGroups: entry.disjointGroups || false,
+      extraRegions: entry.extraRegions || [],
+      quadruples: entry.quadruples || [],
       sandwich: entry.sandwich || null,
       xv: entry.xv || [],
       littleKiller: entry.littleKiller || [],
@@ -474,6 +627,11 @@
       lines: state.lines,
       arrows: state.arrows,
       antiKnight: state.antiKnight,
+      antiKing: state.antiKing,
+      nonConsecutive: state.nonConsecutive,
+      disjointGroups: state.disjointGroups,
+      extraRegions: state.extraRegions,
+      quadruples: state.quadruples,
       sandwich: state.sandwich,
       xv: state.xv,
       littleKiller: state.littleKiller,
@@ -508,6 +666,11 @@
         lines: data.lines || [],
         arrows: data.arrows || [],
         antiKnight: data.antiKnight || false,
+        antiKing: data.antiKing || false,
+        nonConsecutive: data.nonConsecutive || false,
+        disjointGroups: data.disjointGroups || false,
+        extraRegions: data.extraRegions || [],
+        quadruples: data.quadruples || [],
         sandwich: data.sandwich || null,
         xv: data.xv || [],
         littleKiller: data.littleKiller || [],
@@ -547,21 +710,24 @@
         cell.dataset.r = r;
         cell.dataset.c = c;
 
-        if (fogRevealed && !fogRevealed.has(`${r},${c}`)) {
-          // Still under fog: no digit, notes, decoration, or interaction
-          // state gets rendered — none of that is information the player
-          // has actually earned yet.
-          cell.classList.add("fogged");
-          boardEl.appendChild(cell);
-          continue;
-        }
+        // Under fog, the puzzle's own information stays hidden — givens,
+        // cages, lines, dots — but the cell is still yours to work in: you
+        // can select it and write in it, and what you write stays visible
+        // (that's how fog puzzles are meant to play; getting a cell right
+        // is what burns the fog off). A conflict marker is withheld,
+        // though, since it would leak what's hidden underneath.
+        const fogged = !!fogRevealed && !fogRevealed.has(`${r},${c}`);
+        if (fogged) cell.classList.add("fogged");
 
         const val = state.grid[r][c];
         const isGiven = state.givens[r][c] !== 0;
-        if (isGiven) cell.classList.add("given");
-        else if (val !== 0) cell.classList.add("user");
-
-        if (conflicts.has(`${r},${c}`)) cell.classList.add("conflict");
+        if (!fogged) {
+          if (isGiven) cell.classList.add("given");
+          else if (val !== 0) cell.classList.add("user");
+          if (conflicts.has(`${r},${c}`)) cell.classList.add("conflict");
+        } else if (!isGiven && val !== 0) {
+          cell.classList.add("user");
+        }
 
         const shade = state.colors[r][c];
         if (shade !== null && shade !== undefined) {
@@ -592,19 +758,40 @@
           cell.classList.add("hint-target");
         }
 
-        // Appended before the digit/notes below so it paints underneath
-        // them (see computeCellDecorations for why this has to be a
-        // per-cell fragment rather than one global overlay).
-        const decos = cellDecorations.get(`${r},${c}`);
-        if (decos && decos.length > 0) {
-          cell.appendChild(buildCellDecorationSvg(decos));
+        boardEl.appendChild(cell);
+      }
+    }
+    renderDigits(conflicts, fogRevealed);
+    renderDecorationFog(fogRevealed);
+    renderNumpad();
+  }
+
+  // Digits and notes live in their own layer above the decoration overlay
+  // (see renderDecorations), so a line or arrow passing through a cell is
+  // drawn over the grid lines but still under the digit sitting on it.
+  function renderDigits(conflicts, fogRevealed) {
+    digitsEl.innerHTML = "";
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const box = document.createElement("div");
+        box.className = "dcell";
+        const fogged = !!fogRevealed && !fogRevealed.has(`${r},${c}`);
+        // A fogged cell hides the puzzle's given digit, but never the
+        // player's own entries or pencil marks.
+        if (fogged && state.givens[r][c] !== 0) {
+          digitsEl.appendChild(box);
+          continue;
         }
+        const val = state.grid[r][c];
+        if (!fogged && state.givens[r][c] !== 0) box.classList.add("given");
+        else if (val !== 0) box.classList.add("user");
+        if (!fogged && conflicts.has(`${r},${c}`)) box.classList.add("conflict");
 
         if (val !== 0) {
           const span = document.createElement("span");
           span.className = "value";
           span.textContent = val;
-          cell.appendChild(span);
+          box.appendChild(span);
         } else {
           if (state.cornerNotes[r][c].size > 0) {
             const notesGrid = document.createElement("div");
@@ -614,20 +801,18 @@
               span.textContent = state.cornerNotes[r][c].has(n) ? n : "";
               notesGrid.appendChild(span);
             }
-            cell.appendChild(notesGrid);
+            box.appendChild(notesGrid);
           }
           if (state.centerNotes[r][c].size > 0) {
             const center = document.createElement("div");
             center.className = "center-notes";
             center.textContent = [...state.centerNotes[r][c]].sort((a, b) => a - b).join("");
-            cell.appendChild(center);
+            box.appendChild(center);
           }
         }
-
-        boardEl.appendChild(cell);
+        digitsEl.appendChild(box);
       }
     }
-    renderNumpad();
   }
 
   function renderNumpad() {
@@ -669,7 +854,7 @@
   const constraintOverlayEl = document.getElementById("constraintOverlay");
   function renderConstraintOverlays() {
     constraintOverlayEl.innerHTML = "";
-    computeCellDecorations();
+    renderDecorations();
     const hasCages = state.cages && state.cages.length > 0;
     const hasKropki = state.kropki && state.kropki.length > 0;
     const hasXV = state.xv && state.xv.length > 0;
@@ -834,163 +1019,181 @@
     }
   }
 
-  // Lines/arrows are drawn per-cell (inside each cell's own DOM node,
-  // ahead of its digit) rather than as one global overlay. A single
-  // overlay sitting above #boardGrid paints above every cell's entire
-  // box — background AND text together, since each .cell is a
-  // container-query box and thus its own stacking context — so there is
-  // no z-index that puts a global decoration behind text but above a
-  // cell's background. Splitting each line at the midpoint between two
-  // adjacent cell centers and giving each cell only its own half keeps
-  // the drawing seamless while letting normal DOM order (decoration
-  // fragment appended before the digit) put the digit on top, cell by
-  // cell. cages/kropki don't have this problem (they sit near cell edges,
-  // not over the digit) and stay in the global overlay above.
-  let cellDecorations = new Map();
-  function computeCellDecorations() {
-    cellDecorations = new Map();
-    function addDeco(r, c, deco) {
-      const key = `${r},${c}`;
-      if (!cellDecorations.has(key)) cellDecorations.set(key, []);
-      cellDecorations.get(key).push(deco);
-    }
-    function localize(r, c, x, y) {
-      return [x - c * 10, y - r * 10];
-    }
-    // Adds the two half-segments (one per cell) for the straight run
-    // between cells[i-1] and cells[i], optionally starting the first
-    // cell's half from a circle's edge instead of its center.
-    function addHalfSegments(cells, centers, i, className, edgeR) {
-      const [pr, pc] = cells[i - 1];
-      const [r, c] = cells[i];
-      const [px, py] = centers[i - 1];
-      const [cx, cy] = centers[i];
-      const midX = (cx + px) / 2, midY = (cy + py) / 2;
-      let startX = px, startY = py;
-      if (edgeR && i === 1) {
-        const dx = cx - px, dy = cy - py;
-        const dist = Math.hypot(dx, dy) || 1;
-        startX = px + (dx / dist) * edgeR;
-        startY = py + (dy / dist) * edgeR;
-      }
-      const [x1, y1] = localize(pr, pc, startX, startY);
-      const [x2, y2] = localize(pr, pc, midX, midY);
-      addDeco(pr, pc, { kind: "line", x1, y1, x2, y2, className });
-      const [x3, y3] = localize(r, c, midX, midY);
-      const [x4, y4] = localize(r, c, cx, cy);
-      addDeco(r, c, { kind: "line", x1: x3, y1: y3, x2: x4, y2: y4, className });
-    }
+  // Lines, arrows, diagonals and odd/even markers are drawn once, as a
+  // single board-wide SVG, in the layer between the grid lines and the
+  // digits (see .deco-overlay in styles.css). Drawing each line in one
+  // piece rather than cell by cell is what keeps a long diagonal a single
+  // clean stroke: per-cell fragments were re-clipped by every cell border
+  // they crossed, so lines looked chopped at each grid line.
+  const decoOverlayEl = document.getElementById("decoOverlay");
+  const SVG_NS = "http://www.w3.org/2000/svg";
 
-    // Diagonal (X-Sudoku) guide lines: drawn per-cell, corner-to-corner in
-    // local space, so they paint behind the digit like every other
-    // decoration and line up seamlessly across the cell boundary. Added
-    // first so the wide band sits under any line or arrow crossing it.
+  function renderDecorations() {
+    decoOverlayEl.innerHTML = "";
+    const hasLines = (state.lines || []).length > 0;
+    const hasArrows = (state.arrows || []).length > 0;
+    const hasOddEven = (state.oddEven || []).length > 0;
+    const hasQuads = (state.quadruples || []).length > 0;
+    const hasRegions = (state.extraRegions || []).length > 0;
+    if (!hasLines && !hasArrows && !hasOddEven && !hasQuads && !hasRegions && !state.diagonals) return;
+
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 90 90");
+    svg.setAttribute("class", "deco-svg");
+    const group = document.createElementNS(SVG_NS, "g");
+    group.setAttribute("id", "decoGroup");
+    svg.appendChild(group);
+
+    const add = (tag, attrs, className) => {
+      const el = document.createElementNS(SVG_NS, tag);
+      Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+      el.setAttribute("class", className);
+      group.appendChild(el);
+      return el;
+    };
+    const addText = (x, y, className, content) => {
+      const el = add("text", { x, y }, className);
+      el.textContent = content;
+      return el;
+    };
+    const centerOf = ([r, c]) => [c * 10 + 5, r * 10 + 5];
+
+    // Diagonals first: the wide band sits under any line crossing it.
     if (state.diagonals) {
-      for (let i = 0; i < 9; i++) {
-        if (state.diagonals !== "anti") addDeco(i, i, { kind: "line", x1: 0, y1: 0, x2: 10, y2: 10, className: "diagonal-line" });
-        if (state.diagonals !== "main") addDeco(i, 8 - i, { kind: "line", x1: 10, y1: 0, x2: 0, y2: 10, className: "diagonal-line" });
-      }
+      if (state.diagonals !== "anti") add("line", { x1: 0, y1: 0, x2: 90, y2: 90 }, "diagonal-line");
+      if (state.diagonals !== "main") add("line", { x1: 90, y1: 0, x2: 0, y2: 90 }, "diagonal-line");
     }
 
     const THERMO_BULB_R = 3.4;
     const ARROW_CIRCLE_R = 4;
     const HEAD_LEN = 1.8, HEAD_WIDTH = 1.1;
 
-    (state.lines || []).forEach(line => {
-      const cells = line.cells;
-      const centers = cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5]);
-      const className = `line-path line-${line.kind}`;
-      for (let i = 1; i < cells.length; i++) {
-        addHalfSegments(cells, centers, i, className, line.kind === "thermo" ? THERMO_BULB_R : null);
-      }
-      if (line.kind === "thermo") {
-        const [br, bc] = cells[0];
-        const [bx, by] = localize(br, bc, ...centers[0]);
-        addDeco(br, bc, { kind: "circle", cx: bx, cy: by, r: THERMO_BULB_R, className: "thermo-bulb" });
+    // Pulls the start of a path back to the edge of the bulb/circle it
+    // leaves, so the stroke doesn't stick out the far side of it.
+    function fromEdge(cells, radius) {
+      const pts = cells.map(centerOf);
+      const [sx, sy] = pts[0], [nx, ny] = pts[1];
+      const dist = Math.hypot(nx - sx, ny - sy) || 1;
+      pts[0] = [sx + ((nx - sx) / dist) * radius, sy + ((ny - sy) / dist) * radius];
+      return pts;
+    }
+
+    // Extra regions sit furthest back: a soft tint behind everything else.
+    (state.extraRegions || []).forEach((region, i) => {
+      for (const [r, c] of region) {
+        add("rect", { x: c * 10 + 0.4, y: r * 10 + 0.4, width: 9.2, height: 9.2 }, `extra-region extra-region-${i % 4}`);
       }
     });
 
-    (state.arrows || []).forEach(arrow => {
-      const [cr, cc] = arrow.circle;
-      const ccx = cc * 10 + 5, ccy = cr * 10 + 5;
-      const cells = [[cr, cc], ...arrow.cells];
-      const centers = [[ccx, ccy], ...arrow.cells.map(([r, c]) => [c * 10 + 5, r * 10 + 5])];
-      for (let i = 1; i < cells.length; i++) {
-        addHalfSegments(cells, centers, i, "line-path arrow-line", ARROW_CIRCLE_R);
+    const BETWEEN_END_R = 3.2;
+    (state.lines || []).forEach(line => {
+      const cells = line.cells;
+      if (cells.length < 2) return;
+      let pts = cells.map(centerOf);
+      if (line.kind === "thermo") pts = fromEdge(cells, THERMO_BULB_R);
+      // A between line runs from the edge of one circle to the edge of the
+      // other, so the ring around each end stays clean.
+      if (line.kind === "between") {
+        pts = fromEdge(cells, BETWEEN_END_R);
+        pts = fromEdge([...cells].reverse(), BETWEEN_END_R).reverse();
+        const forward = fromEdge(cells, BETWEEN_END_R);
+        pts[0] = forward[0];
       }
-      const [lccx, lccy] = localize(cr, cc, ccx, ccy);
-      addDeco(cr, cc, { kind: "circle", cx: lccx, cy: lccy, r: ARROW_CIRCLE_R, className: "arrow-circle" });
+      // Dutch whispers (difference 4) get their own color.
+      const kindClass = line.kind === "whispers" && line.diff === 4 ? "line-whispers-dutch" : `line-${line.kind}`;
+      add("polyline", { points: pts.map(p => p.join(",")).join(" ") }, `line-path ${kindClass}`);
+      if (line.kind === "thermo") {
+        const [bx, by] = centerOf(cells[0]);
+        add("circle", { cx: bx, cy: by, r: THERMO_BULB_R }, "thermo-bulb");
+      }
+      if (line.kind === "between") {
+        for (const end of [cells[0], cells[cells.length - 1]]) {
+          const [x, y] = centerOf(end);
+          add("circle", { cx: x, cy: y, r: BETWEEN_END_R }, "between-end");
+        }
+      }
+    });
 
-      // Arrowhead at the tip, local to the last cell only.
-      const [lr, lc] = arrow.cells[arrow.cells.length - 1];
-      const tipCenters = centers.slice(1);
-      const [lx, ly] = tipCenters[tipCenters.length - 1];
-      const [px, py] = tipCenters.length > 1 ? tipCenters[tipCenters.length - 2] : centers[0];
-      const adx = lx - px, ady = ly - py;
-      const alen = Math.hypot(adx, ady) || 1;
-      const aux = adx / alen, auy = ady / alen;
-      const perpX = -auy, perpY = aux;
-      const backX = lx - aux * HEAD_LEN, backY = ly - auy * HEAD_LEN;
-      const p1 = localize(lr, lc, backX + perpX * HEAD_WIDTH, backY + perpY * HEAD_WIDTH);
-      const p2 = localize(lr, lc, lx, ly);
-      const p3 = localize(lr, lc, backX - perpX * HEAD_WIDTH, backY - perpY * HEAD_WIDTH);
-      addDeco(lr, lc, { kind: "polyline", points: [p1, p2, p3].map(p => p.join(",")).join(" "), className: "arrow-head" });
+    // Quadruples: a small circle on the corner shared by four cells.
+    (state.quadruples || []).forEach(quad => {
+      const rows = quad.cells.map(([r]) => r), cols = quad.cells.map(([, c]) => c);
+      const x = (Math.max(...cols)) * 10, y = (Math.max(...rows)) * 10;
+      add("circle", { cx: x, cy: y, r: 2.8 }, "quad-circle");
+      const digits = quad.values.slice().sort((a, b) => a - b);
+      const rowsOfText = digits.length > 2 ? [digits.slice(0, 2), digits.slice(2)] : [digits];
+      rowsOfText.forEach((group, i) => {
+        addText(x, y + (rowsOfText.length === 1 ? 0 : i === 0 ? -1.05 : 1.05), "quad-label", group.join(""));
+      });
+    });
+
+    (state.arrows || []).forEach(arrow => {
+      const cells = [arrow.circle, ...arrow.cells];
+      if (cells.length < 2) return;
+      const pts = fromEdge(cells, ARROW_CIRCLE_R);
+      add("polyline", { points: pts.map(p => p.join(",")).join(" ") }, "line-path arrow-line");
+      const [ccx, ccy] = centerOf(arrow.circle);
+      add("circle", { cx: ccx, cy: ccy, r: ARROW_CIRCLE_R }, "arrow-circle");
+
+      // Arrowhead at the tip.
+      const tip = pts[pts.length - 1], prev = pts[pts.length - 2];
+      const alen = Math.hypot(tip[0] - prev[0], tip[1] - prev[1]) || 1;
+      const ux = (tip[0] - prev[0]) / alen, uy = (tip[1] - prev[1]) / alen;
+      const backX = tip[0] - ux * HEAD_LEN, backY = tip[1] - uy * HEAD_LEN;
+      const head = [
+        [backX - uy * HEAD_WIDTH, backY + ux * HEAD_WIDTH],
+        tip,
+        [backX + uy * HEAD_WIDTH, backY - ux * HEAD_WIDTH],
+      ];
+      add("polyline", { points: head.map(p => p.join(",")).join(" ") }, "arrow-head");
     });
 
     // Odd/Even markers: a shaded circle or square behind the digit.
     (state.oddEven || []).forEach(clue => {
-      const [r, c] = clue.cell;
+      const [cx, cy] = centerOf(clue.cell);
       if (clue.parity === "even") {
-        addDeco(r, c, { kind: "rect", x: 1.7, y: 1.7, w: 6.6, h: 6.6, className: "oddeven-even" });
+        add("rect", { x: cx - 3.3, y: cy - 3.3, width: 6.6, height: 6.6 }, "oddeven-even");
       } else {
-        addDeco(r, c, { kind: "circle", cx: 5, cy: 5, r: 3.3, className: "oddeven-odd" });
+        add("circle", { cx, cy, r: 3.3 }, "oddeven-odd");
       }
     });
+
+    decoOverlayEl.appendChild(svg);
   }
 
-  function buildCellDecorationSvg(decos) {
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("viewBox", "0 0 10 10");
-    svg.setAttribute("class", "cell-deco-svg");
-    decos.forEach(d => {
-      let el;
-      if (d.kind === "line") {
-        el = document.createElementNS(svgNS, "line");
-        el.setAttribute("x1", d.x1);
-        el.setAttribute("y1", d.y1);
-        el.setAttribute("x2", d.x2);
-        el.setAttribute("y2", d.y2);
-      } else if (d.kind === "circle") {
-        el = document.createElementNS(svgNS, "circle");
-        el.setAttribute("cx", d.cx);
-        el.setAttribute("cy", d.cy);
-        el.setAttribute("r", d.r);
-      } else if (d.kind === "rect") {
-        el = document.createElementNS(svgNS, "rect");
-        el.setAttribute("x", d.x);
-        el.setAttribute("y", d.y);
-        el.setAttribute("width", d.w);
-        el.setAttribute("height", d.h);
-      } else {
-        el = document.createElementNS(svgNS, "polyline");
-        el.setAttribute("points", d.points);
-      }
-      el.setAttribute("class", d.className);
-      svg.appendChild(el);
-    });
-    return svg;
+  // Under fog, decorations are only visible on revealed cells -- clip the
+  // whole overlay to those cells rather than redrawing it every move.
+  function renderDecorationFog(fogRevealed) {
+    const group = decoOverlayEl.querySelector("#decoGroup");
+    if (!group) return;
+    const svg = decoOverlayEl.querySelector("svg");
+    const old = svg.querySelector("clipPath");
+    if (old) old.remove();
+    if (!fogRevealed) {
+      group.removeAttribute("clip-path");
+      return;
+    }
+    const clip = document.createElementNS(SVG_NS, "clipPath");
+    clip.setAttribute("id", "decoFogClip");
+    for (const key of fogRevealed) {
+      const [r, c] = key.split(",").map(Number);
+      const rect = document.createElementNS(SVG_NS, "rect");
+      rect.setAttribute("x", c * 10);
+      rect.setAttribute("y", r * 10);
+      rect.setAttribute("width", 10);
+      rect.setAttribute("height", 10);
+      clip.appendChild(rect);
+    }
+    svg.insertBefore(clip, svg.firstChild);
+    group.setAttribute("clip-path", "url(#decoFogClip)");
   }
 
   function selectCell(r, c) {
-    if (isCellFogged(r, c)) return;
     state.selected = [[r, c]];
     hintOutput.classList.remove("show");
     render();
   }
 
   function extendSelection(r, c) {
-    if (isCellFogged(r, c)) return;
     if (state.selected.some(([sr, sc]) => sr === r && sc === c)) return;
     state.selected.push([r, c]);
     render();
@@ -1115,6 +1318,11 @@
       || (state.lines && state.lines.length > 0)
       || (state.arrows && state.arrows.length > 0)
       || !!state.antiKnight
+      || !!state.antiKing
+      || !!state.nonConsecutive
+      || !!state.disjointGroups
+      || (state.extraRegions && state.extraRegions.length > 0)
+      || (state.quadruples && state.quadruples.length > 0)
       || !!state.sandwich
       || (state.xv && state.xv.length > 0)
       || (state.littleKiller && state.littleKiller.length > 0)
@@ -1150,8 +1358,26 @@
       if (state.lines.some(l => l.kind === "thermo")) {
         rules.push("Digits increase from the bulb (circle end) to the tip along each thermometer.");
       }
-      if (state.lines.some(l => l.kind === "whispers")) {
+      if (state.lines.some(l => l.kind === "whispers" && (l.diff || 5) === 5)) {
         rules.push("Neighboring digits on a green line differ by 5 or more.");
+      }
+      if (state.lines.some(l => l.kind === "whispers" && l.diff === 4)) {
+        rules.push("Neighboring digits on an orange line differ by 4 or more.");
+      }
+      if (state.lines.some(l => l.kind === "between")) {
+        rules.push("Digits on a line between two circles lie strictly between the two circled digits.");
+      }
+      if (state.lines.some(l => l.kind === "regionsum")) {
+        rules.push("On a blue line, the digits in each 3x3 box the line passes through sum to the same total.");
+      }
+      if (state.lines.some(l => l.kind === "entropic")) {
+        rules.push("Any three cells in a row along a teal line hold one low digit (1-3), one middle (4-6), and one high (7-9).");
+      }
+      if (state.lines.some(l => l.kind === "modular")) {
+        rules.push("Any three cells in a row along a brown line hold digits with three different remainders when divided by 3.");
+      }
+      if (state.lines.some(l => l.kind === "nabner")) {
+        rules.push("Digits on a grey nabner line never repeat and are never consecutive with one another.");
       }
       if (state.lines.some(l => l.kind === "renban")) {
         rules.push("Digits on a purple line form a consecutive set, in any order, with no repeats.");
@@ -1165,6 +1391,21 @@
     }
     if (state.antiKnight) {
       rules.push("Two cells a knight's-move apart can't hold the same digit.");
+    }
+    if (state.antiKing) {
+      rules.push("Two cells that touch diagonally can't hold the same digit.");
+    }
+    if (state.nonConsecutive) {
+      rules.push("Two cells sharing an edge can't hold consecutive digits.");
+    }
+    if (state.disjointGroups) {
+      rules.push("Cells in the same position within their 3x3 box form a group that holds each digit once.");
+    }
+    if (state.extraRegions && state.extraRegions.length > 0) {
+      rules.push("Each shaded region also contains every digit 1-9 once.");
+    }
+    if (state.quadruples && state.quadruples.length > 0) {
+      rules.push("Digits in a small circle all appear in the four cells around it.");
     }
     if (state.sandwich) {
       rules.push("Clues outside the grid give the sum of the digits sandwiched between the 1 and the 9 in that row or column.");

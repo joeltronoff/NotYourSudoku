@@ -28,6 +28,19 @@ node 4-build.js
 To pick up newly catalogued videos later, run `node 1-candidates.js --refresh`
 and then the other steps. Cached videos and puzzles are skipped.
 
+## Rules the app can enforce
+
+Killer cages (with or without a total), kropki dots (plus the full negative
+rule), XV, sandwich sums, little killer, thermometers, arrows, German and
+Dutch whispers, renban, palindromes, between lines, region sum lines,
+entropic lines, modular lines, nabner lines, quadruples, odd/even cells,
+extra regions, diagonals (one or both), anti-knight, anti-king,
+non-consecutive, disjoint groups, and fog of war (including puzzles where
+solving one cell uncovers a region elsewhere).
+
+A video is only considered if every constraint the catalogue lists for it is
+on that list; `1-candidates.js` holds the mapping.
+
 ## What gets imported
 
 A puzzle only makes it into `puzzles-ctc.js` if **all** of these hold:

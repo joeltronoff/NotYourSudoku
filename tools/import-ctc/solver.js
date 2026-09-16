@@ -49,6 +49,15 @@ function buildModel(entry) {
   // diagonals: true (both), "main" (top-left to bottom-right) or "anti".
   if (entry.diagonals === true || entry.diagonals === 'main') houses.push(Array.from({ length: 9 }, (_, i) => i * 9 + i));
   if (entry.diagonals === true || entry.diagonals === 'anti') houses.push(Array.from({ length: 9 }, (_, i) => i * 9 + 8 - i));
+  if (entry.disjointGroups) {
+    for (let pos = 0; pos < 9; pos++) {
+      houses.push(Array.from({ length: 9 }, (_, box) => (
+        (Math.floor(box / 3) * 3 + Math.floor(pos / 3)) * 9 + (box % 3) * 3 + (pos % 3)
+      )));
+    }
+  }
+  for (const region of entry.extraRegions || []) houses.push(region.map(idx));
+
   // Cages act as extra "all different" groups too.
   const cages = (entry.cages || []).map(c => ({ cells: c.cells.map(idx), sum: c.sum == null ? null : c.sum }));
 
@@ -62,6 +71,15 @@ function buildModel(entry) {
     const K = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
       for (const [dr, dc] of K) {
+        const rr = r + dr, cc = c + dc;
+        if (rr >= 0 && rr < 9 && cc >= 0 && cc < 9) peers[r * 9 + c].add(rr * 9 + cc);
+      }
+    }
+  }
+
+  if (entry.antiKing) {
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      for (const [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
         const rr = r + dr, cc = c + dc;
         if (rr >= 0 && rr < 9 && cc >= 0 && cc < 9) peers[r * 9 + c].add(rr * 9 + cc);
       }
@@ -93,6 +111,14 @@ function buildModel(entry) {
       }
     }
   }
+  if (entry.nonConsecutive) {
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      for (const [nr, nc] of [[r, c + 1], [r + 1, c]]) {
+        if (nr > 8 || nc > 8) continue;
+        addPair(r * 9 + c, nr * 9 + nc, (x, y) => Math.abs(x - y) !== 1);
+      }
+    }
+  }
   for (const xv of entry.xv || []) {
     const target = xv.kind === 'X' ? 10 : 5;
     addPair(idx(xv.a), idx(xv.b), (x, y) => x + y === target);
@@ -101,13 +127,40 @@ function buildModel(entry) {
   const sums = []; // { cells, total: number | cellIndex (arrow circle) , distinct:false }
   const thermos = [];
   const renbans = [];
+  const betweens = [];
+  const regionSums = [];
+  const quadruples = (entry.quadruples || []).map(q => ({ cells: q.cells.map(idx), values: q.values.slice() }));
   for (const line of entry.lines || []) {
     const cells = line.cells.map(idx);
     if (line.kind === 'thermo') {
       thermos.push(cells);
       for (let i = 1; i < cells.length; i++) addPair(cells[i - 1], cells[i], (x, y) => x < y);
     } else if (line.kind === 'whispers') {
-      for (let i = 1; i < cells.length; i++) addPair(cells[i - 1], cells[i], (x, y) => Math.abs(x - y) >= 5);
+      const minDiff = line.diff || 5;
+      for (let i = 1; i < cells.length; i++) addPair(cells[i - 1], cells[i], (x, y) => Math.abs(x - y) >= minDiff);
+    } else if (line.kind === 'between') {
+      betweens.push({ ends: [cells[0], cells[cells.length - 1]], middle: cells.slice(1, -1) });
+    } else if (line.kind === 'regionsum') {
+      const segments = [];
+      for (const i of cells) {
+        const r = Math.floor(i / 9), c = i % 9;
+        const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+        const last = segments[segments.length - 1];
+        if (last && last.box === box) last.cells.push(i);
+        else segments.push({ box, cells: [i] });
+      }
+      if (segments.length > 1) regionSums.push(segments.map(s => s.cells));
+    } else if (line.kind === 'entropic' || line.kind === 'modular') {
+      const groupOf = v => (line.kind === 'entropic' ? Math.floor((v - 1) / 3) : v % 3);
+      for (let i = 0; i < cells.length; i++) {
+        for (const j of [i + 1, i + 2]) {
+          if (j < cells.length) addPair(cells[i], cells[j], (x, y) => groupOf(x) !== groupOf(y));
+        }
+      }
+    } else if (line.kind === 'nabner') {
+      for (let i = 0; i < cells.length; i++) {
+        for (let j = i + 1; j < cells.length; j++) addPair(cells[i], cells[j], (x, y) => Math.abs(x - y) > 1);
+      }
     } else if (line.kind === 'palindrome') {
       for (let i = 0; i < Math.floor(cells.length / 2); i++) addPair(cells[i], cells[cells.length - 1 - i], (x, y) => x === y);
     } else if (line.kind === 'renban') {
@@ -145,13 +198,13 @@ function buildModel(entry) {
       }
     }
   }
-  return { rowCells, colCells, intersections, houses, cages, peerList, peerSets: peers, pairs, cellPairs, sums, thermos, renbans, givens, parity, sandwich: entry.sandwich || null };
+  return { rowCells, colCells, intersections, houses, cages, peerList, peerSets: peers, pairs, cellPairs, sums, thermos, renbans, betweens, regionSums, quadruples, givens, parity, sandwich: entry.sandwich || null };
 }
 
 // Filters candidate masks in `cand` to a fixpoint. Returns false on
 // contradiction.
 function propagate(model, cand) {
-  const { houses, cages, peerList, pairs, sums, renbans, sandwich } = model;
+  const { houses, cages, peerList, pairs, sums, renbans, betweens, regionSums, quadruples, sandwich } = model;
   let changed = true;
   const set = (i, m) => {
     if (m === cand[i]) return true;
@@ -332,6 +385,66 @@ function propagate(model, cand) {
       }
     }
 
+    // Between lines: the middle cells lie strictly between the two ends.
+    for (const { ends: [a, b], middle } of betweens) {
+      if (middle.length === 0) continue;
+      const endMask = (x, other) => {
+        let allowed = 0;
+        for (const v of digitsOf(cand[x])) {
+          for (const w of digitsOf(cand[other])) {
+            const lowEnd = Math.min(v, w), highEnd = Math.max(v, w);
+            if (middle.every(m => cand[m] & rangeMask(lowEnd + 1, highEnd - 1))) { allowed |= bit(v); break; }
+          }
+        }
+        return allowed;
+      };
+      if (!set(a, cand[a] & endMask(a, b))) return false;
+      if (!set(b, cand[b] & endMask(b, a))) return false;
+      const eLo = Math.min(maskMin(cand[a]), maskMin(cand[b]));
+      const eHi = Math.max(maskMax(cand[a]), maskMax(cand[b]));
+      for (const m of middle) if (!set(m, cand[m] & rangeMask(eLo + 1, eHi - 1))) return false;
+    }
+
+    // Region sum lines: every box segment of the line has the same total.
+    for (const segments of regionSums) {
+      const ranges = segments.map(seg => {
+        let lo = 0, hi = 0;
+        for (const i of seg) { lo += maskMin(cand[i]); hi += maskMax(cand[i]); }
+        return [lo, hi];
+      });
+      const lo = Math.max(...ranges.map(r => r[0]));
+      const hi = Math.min(...ranges.map(r => r[1]));
+      if (lo > hi) return false;
+      for (const seg of segments) {
+        let segLo = 0, segHi = 0;
+        for (const i of seg) { segLo += maskMin(cand[i]); segHi += maskMax(cand[i]); }
+        for (const i of seg) {
+          const othersLo = segLo - maskMin(cand[i]), othersHi = segHi - maskMax(cand[i]);
+          if (!set(i, cand[i] & rangeMask(lo - othersHi, hi - othersLo))) return false;
+        }
+      }
+    }
+
+    // Quadruples: every listed digit has to fit in the four cells.
+    for (const quad of quadruples) {
+      const counts = new Map();
+      for (const v of quad.values) counts.set(v, (counts.get(v) || 0) + 1);
+      let needed = 0;
+      for (const [v, times] of counts) {
+        const room = quad.cells.filter(i => cand[i] & bit(v)).length;
+        if (room < times) return false;
+        needed += times;
+        if (room === times) {
+          for (const i of quad.cells) if (cand[i] & bit(v)) { if (!set(i, bit(v))) return false; }
+        }
+      }
+      if (needed === quad.cells.length) {
+        let union = 0;
+        for (const v of counts.keys()) union |= bit(v);
+        for (const i of quad.cells) if (!set(i, cand[i] & union)) return false;
+      }
+    }
+
     // Sandwich: try every placement of the 1 and 9 still possible, keep
     // those whose in-between cells can reach the clue (distinct digits
     // 2-8), and strip 1/9 from positions no surviving placement uses.
@@ -503,4 +616,4 @@ function proveUnique(entry, solution, { maxNodes = 3_000_000 } = {}) {
   }
 }
 
-module.exports = { countSolutions, proveUnique };
+module.exports = { countSolutions, proveUnique, buildModel, propagate, bit, popcount, lowestDigit };

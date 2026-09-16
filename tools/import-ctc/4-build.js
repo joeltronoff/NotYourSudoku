@@ -23,8 +23,13 @@ const { loadApp, appAcceptsSolution, ROOT } = require('./app-engine');
 
 const { engine, library } = loadApp();
 
+// Bump when the verification pipeline in this file changes in a way that
+// should invalidate cached results (the hashed files below cover the rest).
+const VERIFY_REVISION = 2;
+
 const CODE_VERSION = crypto.createHash('sha1')
-  .update(['convert.js', 'solver.js', 'app-engine.js', '../../sudoku-engine.js'].map(f => fs.readFileSync(path.join(__dirname, f), 'utf8')).join('\n'))
+  .update(['convert.js', 'solver.js', 'app-engine.js', '../../sudoku-engine.js'].map(f => fs.readFileSync(path.join(__dirname, f), 'utf8').replace(/\r\n/g, '\n')).join('\n')) // git may flip line endings
+  .update(String(VERIFY_REVISION))
   .digest('hex');
 
 const TAG_KINDS = {
@@ -33,6 +38,8 @@ const TAG_KINDS = {
   'German Whispers': ['whispers'], Renban: ['renban'], Palindrome: ['palindrome'],
   'Little Killer': ['littleKiller'], 'Anti-Knight': ['antiKnight'], Sandwich: ['sandwich'],
   XV: ['xv'], Diagonal: ['diagonal'], 'O/E': ['odd', 'even'],
+  'Between Lines': ['between'], 'Region Sum Lines': ['regionsum'], 'Entropic Lines': ['entropic'],
+  'Modular Lines': ['modular'], Nabner: ['nabner'], 'Dutch Whispers': ['dutch'],
 };
 
 function argValue(flag) {
@@ -63,10 +70,16 @@ function variantsOf(entry) {
   if (entry.kropki) v.push('kropki');
   if (entry.lines || entry.arrows || entry.littleKiller) v.push('lines');
   if (entry.antiKnight) v.push('antiknight');
+  if (entry.antiKing) v.push('antiking');
+  if (entry.nonConsecutive) v.push('nonconsecutive');
+  if (entry.disjointGroups) v.push('disjoint');
+  if (entry.extraRegions) v.push('extraregions');
+  if (entry.quadruples) v.push('quadruple');
   if (entry.sandwich) v.push('sandwich');
   if (entry.xv) v.push('xv');
   if (entry.diagonals) v.push('diagonal');
   if (entry.oddEven) v.push('oddeven');
+  if (entry.fog) v.push('fog');
   if (v.length === 0) v.push('classic');
   return v;
 }
@@ -78,6 +91,7 @@ function detectedKinds(entry) {
   for (const l of entry.lines || []) k.add(l.kind);
   if (entry.arrows) k.add('arrow');
   if (entry.littleKiller) k.add('littleKiller');
+  for (const l of entry.lines || []) if (l.kind === 'whispers' && l.diff === 4) k.add('dutch');
   if (entry.antiKnight) k.add('antiKnight');
   if (entry.sandwich) k.add('sandwich');
   if (entry.xv) k.add('xv');
@@ -164,6 +178,10 @@ async function main() {
   const limit = parseInt(argValue('--limit') || fetched.length, 10);
 
   const seen = new Set(library.map(gridKey));
+  // A video can feature one of the GAS puzzles listed in some description;
+  // remember which links are GAS so those entries are tagged as GAS too.
+  const gasByUrl = new Map();
+  fetched.forEach(v => (v.gas || []).forEach(g => gasByUrl.set(g.chosen.url, g.number)));
   const videoRowCounts = new Map();
   fetched.forEach(v => videoRowCounts.set(v.videoId, (videoRowCounts.get(v.videoId) || 0) + 1));
   const imported = [];
@@ -190,13 +208,14 @@ async function main() {
     const setter = (cand.setter || conv.author || '').trim();
     const when = monthYear(cand.date);
     const givenCount = entry.givens.flat().filter(Boolean).length;
+    const gasNumber = gasByUrl.get(video.chosen.url);
     imported.push({
       // A video that features several puzzles has one catalogue row each.
       id: videoRowCounts.get(video.videoId) > 1 ? `ctc-${video.videoId}-${cand.serial}` : `ctc-${video.videoId}`,
       title: escapeHtml(title),
-      blurb: escapeHtml(`${setter ? `By ${setter}. ` : ''}Featured on Cracking the Cryptic${when ? ` (${when})` : ''}${givenCount ? ` — ${givenCount} given${givenCount === 1 ? '' : 's'}` : ' — no givens'}.`),
+      blurb: escapeHtml(`${setter ? `By ${setter}. ` : ''}Featured on Cracking the Cryptic${when ? ` (${when})` : ''}${gasNumber ? `, GAS #${gasNumber}` : ''}${givenCount ? ` — ${givenCount} given${givenCount === 1 ? '' : 's'}` : ' — no givens'}.`),
       stars: starsFromMinutes(cand.minutes),
-      source: { video: `https://www.youtube.com/watch?v=${video.videoId}`, puzzle: video.chosen.url },
+      source: { video: `https://www.youtube.com/watch?v=${video.videoId}`, puzzle: video.chosen.url, ...(gasNumber ? { gas: gasNumber } : {}) },
       ...entry,
       solution: entry.solution,
       variants: variantsOf(entry),

@@ -459,12 +459,72 @@ function findVariantConflicts(grid, constraints) {
           }
         }
       } else if (line.kind === "whispers") {
+        // German whispers by default; Dutch whispers set diff to 4.
+        const minDiff = line.diff || 5;
         for (let i = 1; i < cells.length; i++) {
           const [r1, c1] = cells[i - 1], [r2, c2] = cells[i];
           const v1 = grid[r1][c1], v2 = grid[r2][c2];
-          if (v1 !== 0 && v2 !== 0 && Math.abs(v1 - v2) < 5) {
+          if (v1 !== 0 && v2 !== 0 && Math.abs(v1 - v2) < minDiff) {
             conflicts.add(`${r1},${c1}`);
             conflicts.add(`${r2},${c2}`);
+          }
+        }
+      } else if (line.kind === "between") {
+        // Digits between the two circled ends lie strictly between them.
+        const [ar, ac] = cells[0], [br, bc] = cells[cells.length - 1];
+        const a = grid[ar][ac], b = grid[br][bc];
+        if (a !== 0 && b !== 0) {
+          const lo = Math.min(a, b), hi = Math.max(a, b);
+          for (const [r, c] of cells.slice(1, -1)) {
+            const v = grid[r][c];
+            if (v !== 0 && (v <= lo || v >= hi)) {
+              conflicts.add(`${r},${c}`);
+              conflicts.add(`${ar},${ac}`);
+              conflicts.add(`${br},${bc}`);
+            }
+          }
+        }
+      } else if (line.kind === "regionsum") {
+        // Every box the line passes through holds the same total.
+        const segments = [];
+        for (const [r, c] of cells) {
+          const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+          const last = segments[segments.length - 1];
+          if (last && last.box === box) last.cells.push([r, c]);
+          else segments.push({ box, cells: [[r, c]] });
+        }
+        const totals = segments
+          .filter(s => s.cells.every(([r, c]) => grid[r][c] !== 0))
+          .map(s => s.cells.reduce((sum, [r, c]) => sum + grid[r][c], 0));
+        if (totals.length > 1 && new Set(totals).size > 1) {
+          for (const [r, c] of cells) if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
+        }
+      } else if (line.kind === "entropic" || line.kind === "modular") {
+        // Any three cells in a row along the line cover all three groups:
+        // low/middle/high for entropic, the three remainders mod 3 for
+        // modular. Equivalently, cells one or two apart differ in group.
+        const groupOf = v => (line.kind === "entropic" ? Math.floor((v - 1) / 3) : v % 3);
+        for (let i = 0; i < cells.length; i++) {
+          for (const j of [i + 1, i + 2]) {
+            if (j >= cells.length) continue;
+            const [r1, c1] = cells[i], [r2, c2] = cells[j];
+            const v1 = grid[r1][c1], v2 = grid[r2][c2];
+            if (v1 !== 0 && v2 !== 0 && groupOf(v1) === groupOf(v2)) {
+              conflicts.add(`${r1},${c1}`);
+              conflicts.add(`${r2},${c2}`);
+            }
+          }
+        }
+      } else if (line.kind === "nabner") {
+        // No two digits on the line repeat or are consecutive.
+        for (let i = 0; i < cells.length; i++) {
+          for (let j = i + 1; j < cells.length; j++) {
+            const [r1, c1] = cells[i], [r2, c2] = cells[j];
+            const v1 = grid[r1][c1], v2 = grid[r2][c2];
+            if (v1 !== 0 && v2 !== 0 && Math.abs(v1 - v2) <= 1) {
+              conflicts.add(`${r1},${c1}`);
+              conflicts.add(`${r2},${c2}`);
+            }
           }
         }
       } else if (line.kind === "palindrome") {
@@ -536,6 +596,96 @@ function findVariantConflicts(grid, constraints) {
             conflicts.add(`${rr},${cc}`);
           }
         }
+      }
+    }
+  }
+
+  if (constraints.antiKing) {
+    const KING_OFFSETS = [[-1, -1], [-1, 1], [1, -1], [1, 1]]; // diagonals; orthogonal pairs already share a house
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        for (const [dr, dc] of KING_OFFSETS) {
+          const rr = r + dr, cc = c + dc;
+          if (rr < 0 || rr > 8 || cc < 0 || cc > 8) continue;
+          if (grid[rr][cc] === v) {
+            conflicts.add(`${r},${c}`);
+            conflicts.add(`${rr},${cc}`);
+          }
+        }
+      }
+    }
+  }
+
+  if (constraints.nonConsecutive) {
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        for (const [nr, nc] of [[r, c + 1], [r + 1, c]]) {
+          if (nr > 8 || nc > 8) continue;
+          const nv = grid[nr][nc];
+          if (nv !== 0 && Math.abs(v - nv) === 1) {
+            conflicts.add(`${r},${c}`);
+            conflicts.add(`${nr},${nc}`);
+          }
+        }
+      }
+    }
+  }
+
+  // Disjoint groups: cells in the same position within their box form a
+  // group that holds each digit once (top-left cells of all nine boxes, etc).
+  if (constraints.disjointGroups) {
+    for (let pos = 0; pos < 9; pos++) {
+      const seen = new Map();
+      for (let box = 0; box < 9; box++) {
+        const r = Math.floor(box / 3) * 3 + Math.floor(pos / 3);
+        const c = (box % 3) * 3 + (pos % 3);
+        const v = grid[r][c];
+        if (v === 0) continue;
+        if (seen.has(v)) {
+          conflicts.add(`${r},${c}`);
+          const [pr, pc] = seen.get(v);
+          conflicts.add(`${pr},${pc}`);
+        }
+        seen.set(v, [r, c]);
+      }
+    }
+  }
+
+  if (constraints.extraRegions) {
+    for (const region of constraints.extraRegions) {
+      const seen = new Map();
+      for (const [r, c] of region) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        if (seen.has(v)) {
+          conflicts.add(`${r},${c}`);
+          const [pr, pc] = seen.get(v);
+          conflicts.add(`${pr},${pc}`);
+        }
+        seen.set(v, [r, c]);
+      }
+    }
+  }
+
+  // Quadruple: the digits shown in the little circle all appear in the four
+  // cells around it (repeated digits must appear that many times).
+  if (constraints.quadruples) {
+    for (const quad of constraints.quadruples) {
+      const values = quad.cells.map(([r, c]) => grid[r][c]);
+      const blanks = values.filter(v => v === 0).length;
+      const pool = values.filter(v => v !== 0);
+      let short = 0;
+      for (const need of new Set(quad.values)) {
+        const required = quad.values.filter(v => v === need).length;
+        const have = pool.filter(v => v === need).length;
+        if (have < required) short += required - have;
+      }
+      if (short > blanks) {
+        for (const [r, c] of quad.cells) if (grid[r][c] !== 0) conflicts.add(`${r},${c}`);
       }
     }
   }

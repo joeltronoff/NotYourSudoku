@@ -83,6 +83,12 @@ const KIND_KEYWORDS = {
   whispers: /whisper|differ by (at least )?(5|five)|difference of (at least )?(5|five)/,
   renban: /renban|consecutive/,
   palindrome: /palindrom|read the same|same (forwards|backwards)/,
+  between: /between line|between the (two )?circle|strictly between/,
+  regionsum: /region sum|same sum in each|each box.*same (total|sum)|box borders divide/,
+  entropic: /entropic|low.*middle.*high|1-3.*4-6.*7-9/,
+  modular: /modular|remainder|mod 3|modulo/,
+  nabner: /nabner/,
+  dutch: /dutch|differ by (at least )?(4|four)/,
   arrow: /arrow/,
   littleKiller: /diagonal|little killer/,
   sandwich: /sandwich|between the 1 and (the )?9|between 1 and 9/,
@@ -96,13 +102,12 @@ const KIND_KEYWORDS = {
 // Phrases that change the meaning of a constraint we'd otherwise recognise,
 // or introduce a rule this app can't enforce at all.
 const RULE_BLACKLIST = [
-  /three times|triple|1:3|ratio of 3/, /wobbly/, /dutch/, /slow thermo|may repeat on (a|the) thermo|not necessarily (strictly )?increas/,
-  /missing bulb|bulbs? (are|is) missing|thermo.*(no|without) bulb/, /fog/, /nabner/, /entropic|entropy/, /modular/,
-  /parity line/, /region sum/, /between line/, /lockout/, /zipper/, /clone/, /anti-?king|king'?s move/,
-  /disjoint/, /x-?sum/, /skyscraper/, /quadruple/, /index/, /doubler/, /negator/, /chaos/, /irregular/,
+  /three times|triple|1:3|ratio of 3/, /wobbly/, /slow thermo|may repeat on (a|the) thermo|not necessarily (strictly )?increas/,
+  /missing bulb|bulbs? (are|is) missing|thermo.*(no|without) bulb/, /entropy\b/,
+  /parity line/, /lockout/, /zipper/, /clone/, /x-?sum/, /skyscraper/, /index/, /doubler/, /negator/, /chaos/, /irregular/,
   /yin.?yang/, /\bloop\b/, /snake/, /sweeper/, /cipher|letter/, /product/, /10 lines|ten lines/, /equal sum/,
-  /multiplied|multiplication/, /\bliar\b|\blie\b|lying/, /extra region/, /deconstruct/, /fill ?omino/,
-  /windoku|hyper/, /non-?consecutive/, /anti-?kropki/, /max(imum)? cell|min(imum)? cell/,
+  /multiplied|multiplication/, /\bliar\b|\blie\b|lying/, /deconstruct/, /fill ?omino/,
+  /windoku|hyper/, /anti-?kropki/, /max(imum)? cell|min(imum)? cell/,
   /\bgreater than\b|\bless than\b|inequality/, /numbered room/, /count(ing)? circle/, /magic square/,
   /\bsum(s)? of (the )?(digits )?(in )?(each|every) (row|column)/, /\bmean\b|\baverage\b/, /\bprime/,
   /can repeat in (a|the) cage|may repeat (with)?in (a|the) cage|digits may repeat in cages/,
@@ -173,13 +178,45 @@ const holds = {
   },
   palindrome: (sol, cells) => cells.every((c, i) => sol[c[0]][c[1]] === sol[cells[cells.length - 1 - i][0]][cells[cells.length - 1 - i][1]]),
   thermo: (sol, cells) => cells.every((c, i) => i === 0 || sol[c[0]][c[1]] > sol[cells[i - 1][0]][cells[i - 1][1]]),
+  dutch: (sol, cells) => cells.every((c, i) => i === 0 || Math.abs(sol[c[0]][c[1]] - sol[cells[i - 1][0]][cells[i - 1][1]]) >= 4),
+  between: (sol, cells) => {
+    if (cells.length < 3) return false;
+    const a = sol[cells[0][0]][cells[0][1]], b = sol[cells[cells.length - 1][0]][cells[cells.length - 1][1]];
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    return cells.slice(1, -1).every(([r, c]) => sol[r][c] > lo && sol[r][c] < hi);
+  },
+  regionsum: (sol, cells) => {
+    const segments = [];
+    for (const [r, c] of cells) {
+      const box = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      const last = segments[segments.length - 1];
+      if (last && last.box === box) last.cells.push([r, c]);
+      else segments.push({ box, cells: [[r, c]] });
+    }
+    if (segments.length < 2) return false;
+    const totals = segments.map(s => s.cells.reduce((sum, [r, c]) => sum + sol[r][c], 0));
+    return totals.every(t => t === totals[0]);
+  },
+  entropic: (sol, cells) => cells.every((c, i) => [i + 1, i + 2].every(j => (
+    j >= cells.length || Math.floor((sol[c[0]][c[1]] - 1) / 3) !== Math.floor((sol[cells[j][0]][cells[j][1]] - 1) / 3)
+  ))),
+  modular: (sol, cells) => cells.every((c, i) => [i + 1, i + 2].every(j => (
+    j >= cells.length || sol[c[0]][c[1]] % 3 !== sol[cells[j][0]][cells[j][1]] % 3
+  ))),
+  nabner: (sol, cells) => cells.every((c, i) => cells.every((d, j) => (
+    i === j || Math.abs(sol[c[0]][c[1]] - sol[d[0]][d[1]]) > 1
+  ))),
 };
 
 // Decides whether each colour group of plain lines is whispers, renban or
 // palindrome, from the rules text (which colour it names for which rule),
 // usual colour conventions, and -- decisively -- the setter's solution.
 // `infos`: [{ cells, fam }]. Returns puzzle `lines` entries or rejects.
-const DEFAULT_KIND = { green: 'whispers', pink: 'renban', purple: 'renban', gray: 'palindrome' };
+const LINE_KINDS = ['whispers', 'renban', 'palindrome', 'between', 'regionsum', 'entropic', 'modular', 'nabner', 'dutch'];
+const DEFAULT_KIND = {
+  green: 'whispers', pink: 'renban', purple: 'renban', gray: 'palindrome',
+  blue: 'regionsum', orange: 'dutch',
+};
 function inferColouredLines(infos, { rules, solution, mentions }) {
   const endpointKey = cell => `${cell[0]},${cell[1]}`;
   const groups = new Map();
@@ -190,7 +227,7 @@ function inferColouredLines(infos, { rules, solution, mentions }) {
   const sentences = rules ? rulesSentences(rules) : [];
   const out = [];
   for (const [fam, members] of groups) {
-    let options = ['whispers', 'renban', 'palindrome'].filter(k => mentions(k));
+    let options = LINE_KINDS.filter(k => mentions(k));
     if (sentences.length && COLOR_WORDS[fam]) {
       const named = options.filter(k => sentences.some(s => COLOR_WORDS[fam].test(s) && KIND_KEYWORDS[k].test(s)));
       if (named.length > 0) options = named;
@@ -213,9 +250,66 @@ function inferColouredLines(infos, { rules, solution, mentions }) {
     options = options.filter(k => members.every(x => valid(k, x)));
     if (options.length > 1 && DEFAULT_KIND[fam] && options.includes(DEFAULT_KIND[fam])) options = [DEFAULT_KIND[fam]];
     if (options.length !== 1) reject(`can't identify ${fam} line rule (${options.length} options)`);
-    for (const x of members) out.push({ kind: options[0], cells: cellsFor(options[0], x) });
+    for (const x of members) {
+      const kind = options[0];
+      const line = { kind: kind === 'dutch' ? 'whispers' : kind, cells: cellsFor(kind, x) };
+      if (kind === 'dutch') line.diff = 4;
+      out.push(line);
+    }
   }
   return out;
+}
+
+// "r8c9r9c8r4c8..." -- SudokuPad cell references, run together.
+function parseCellRefs(str) {
+  const out = [];
+  const text = String(str || '');
+  const re = /r(\d+)c(\d+)/gi;
+  let m, consumed = 0;
+  while ((m = re.exec(text))) {
+    const r = Number(m[1]) - 1, c = Number(m[2]) - 1;
+    if (!inGrid([r, c])) reject(`cell reference outside the grid: ${m[0]}`);
+    out.push([r, c]);
+    consumed += m[0].length;
+  }
+  if (out.length === 0 || consumed !== text.replace(/[\s,]/g, '').length) {
+    reject(`unparsed cell reference list "${text.slice(0, 40)}"`);
+  }
+  return out;
+}
+
+// Builds the app's fog field.
+//
+// Two different fog mechanics exist, and a puzzle uses one or the other:
+//   * the usual one -- fog lights and givens start lit, and each cell the
+//     player solves correctly clears the 3x3 around it (seedRadius 0 means
+//     the starting lights don't clear a neighbourhood of their own);
+//   * trigger links -- solving specific cells uncovers a named region
+//     somewhere else entirely, and nothing clears its own surroundings.
+function buildFog(lit, givens, links) {
+  const reveal = new Set(lit);
+  if (!links || links.length === 0) {
+    givens.forEach((row, r) => row.forEach((v, c) => { if (v) reveal.add(`${r},${c}`); }));
+  }
+  const fog = {
+    reveal: [...reveal].map(k => k.split(',').map(Number)),
+    radius: 1,
+    seedRadius: 0,
+  };
+  if (links && links.length > 0) fog.links = links;
+  return fog;
+}
+
+// SudokuPad "triggereffect" entries: solving every cell of `trigger` lights
+// exactly the cells of `effect` (no neighbourhood spread at all).
+function parseFogLinks(triggereffect) {
+  if (!Array.isArray(triggereffect)) return [];
+  return triggereffect.map(te => {
+    if (!te || !te.effect) reject('malformed trigger effect');
+    if (te.effect.type !== 'foglight') reject(`unsupported trigger effect "${te.effect.type}"`);
+    if (!te.trigger || te.trigger.type !== 'cellvalue') reject(`unsupported trigger type "${te.trigger && te.trigger.type}"`);
+    return { trigger: parseCellRefs(te.trigger.cell), reveal: parseCellRefs(te.effect.cells) };
+  });
 }
 
 // ---------------------------------------------------------------- scl converter
@@ -248,10 +342,34 @@ function convertScl(p, ctx) {
   const entry = { givens };
   const used = { lines: new Set(), overlays: new Set(), underlays: new Set(), arrows: new Set() };
 
+  // ---- fog of war
+  // A puzzle is a fog puzzle if it carries a foglight list at all (that's
+  // how SudokuPad itself detects one); the cells in it start lit, as do
+  // givens. Fog lights can also arrive as specially-valued cages.
+  const fogLit = new Set();
+  const fogLinks = parseFogLinks(p.triggereffect);
+  let hasFog = Array.isArray(p.foglight) || fogLinks.length > 0;
+  // Older exports carry fog lights as a "foglight: r1c1,r1c2,..." pseudo-cage,
+  // which sclMetadata has already folded into the metadata.
+  if (meta.foglight) {
+    hasFog = true;
+    for (const [r, c] of parseCellRefs(meta.foglight)) fogLit.add(`${r},${c}`);
+  }
+  for (const [r, c] of p.foglight || []) {
+    if (!inGrid([r, c])) reject('fog light outside the grid');
+    fogLit.add(`${r},${c}`);
+  }
+  if (p.foglink) reject('fog with pre-resolved foglink data (not supported)');
+
   // ---- killer cages
   const cages = [];
   const hiddenCages = [];
   for (const cage of realCages) {
+    if (typeof cage.value === 'string' && /^FOGLIGHT$/i.test(cage.value.trim())) {
+      hasFog = true;
+      (cage.cells || []).forEach(([r, c]) => fogLit.add(`${r},${c}`));
+      continue;
+    }
     if (cage.hidden) { hiddenCages.push(cage); continue; }
     const cells = cage.cells.map(([r, c]) => [r, c]);
     if (!cells.every(inGrid)) reject('cage outside grid');
@@ -268,6 +386,8 @@ function convertScl(p, ctx) {
     if (!mentions('killer')) reject('cages present but rules never mention cages');
     entry.cages = cages;
   }
+  if (!hasFog && /\bfog\b/.test(rulesLower)) reject('rules mention fog but the puzzle carries no fog data');
+  if (hasFog) entry.fog = buildFog(fogLit, givens, fogLinks);
 
   const overlays = [...(p.overlays || []).map((o, i) => ({ ...o, _list: 'overlays', _i: i })),
     ...(p.underlays || []).map((o, i) => ({ ...o, _list: 'underlays', _i: i }))];
@@ -533,6 +653,12 @@ function convertScl(p, ctx) {
   if (leftovers.length > 0) reject(`unrecognised elements: ${[...new Set(leftovers)].join(', ')}`);
 
   // Rule-only constraints.
+  if (/king'?s move|touch(ing)? diagonally|diagonally adjacent/.test(rulesLower)) entry.antiKing = true;
+  if (/non-?consecutive|(cannot|can't|may not|must not) (be|contain) consecutive/.test(rulesLower)
+    && /orthogonal|adjacent|neighbou?r|share an edge|touch/.test(rulesLower)) {
+    entry.nonConsecutive = true;
+  }
+  if (/disjoint/.test(rulesLower)) entry.disjointGroups = true;
   if ((meta.antiknight || /knight/.test(rulesLower))) {
     if (!/knight/.test(rulesLower) && !meta.antiknight) reject('ambiguous anti-knight');
     entry.antiKnight = true;
@@ -554,10 +680,9 @@ function convertScl(p, ctx) {
 
 // ---------------------------------------------------------------- f-puzzles converter
 const FP_UNSUPPORTED = [
-  'extraregion', 'clone', 'quadruple', 'betweenline', 'minimum', 'maximum', 'rowindexer', 'columnindexer',
-  'boxindexer', 'xsum', 'skyscraper', 'entropicline', 'modularline', 'zipperline', 'nabner', 'doublearrow',
-  'lockout', 'disjointgroups', 'fogofwar', 'foglight', 'cage', 'antiking', 'regionsumline', 'nonconsecutive',
-  'slowthermometer', 'text', 'rectangle', 'circle', 'regionsum', 'parityline', 'dutchwhispers',
+  'clone', 'minimum', 'maximum', 'rowindexer', 'columnindexer', 'boxindexer', 'xsum', 'skyscraper',
+  'zipperline', 'doublearrow', 'lockout', 'cage', 'slowthermometer', 'text', 'rectangle', 'circle',
+  'parityline',
 ];
 
 function parseFpCell(s) {
@@ -613,12 +738,27 @@ function convertFpuzzles(p, ctx) {
   for (const t of p.renban || []) for (const l of t.lines) lines.push({ kind: 'renban', cells: l.map(parseFpCell) });
   for (const t of p.palindrome || []) for (const l of t.lines) lines.push({ kind: 'palindrome', cells: l.map(parseFpCell) });
   for (const t of p.whispers || []) {
-    if (t.value != null && t.value !== '' && Number(t.value) !== 5) reject(`whispers difference ${t.value}`);
-    for (const l of t.lines) lines.push({ kind: 'whispers', cells: l.map(parseFpCell) });
+    const diff = t.value == null || t.value === '' ? 5 : Number(t.value);
+    if (diff !== 5 && diff !== 4) reject(`whispers difference ${t.value}`);
+    for (const l of t.lines) lines.push({ kind: 'whispers', cells: l.map(parseFpCell), ...(diff === 4 ? { diff: 4 } : {}) });
   }
+  for (const t of p.dutchwhispers || []) {
+    for (const l of t.lines) lines.push({ kind: 'whispers', diff: 4, cells: l.map(parseFpCell) });
+  }
+  for (const t of p.betweenline || []) for (const l of t.lines) lines.push({ kind: 'between', cells: l.map(parseFpCell) });
+  for (const t of p.regionsumline || []) for (const l of t.lines) lines.push({ kind: 'regionsum', cells: l.map(parseFpCell) });
+  for (const t of p.entropicline || []) for (const l of t.lines) lines.push({ kind: 'entropic', cells: l.map(parseFpCell) });
+  for (const t of p.modularline || []) {
+    if (t.value != null && t.value !== '' && Number(t.value) !== 3) reject(`modular line with modulus ${t.value}`);
+    for (const l of t.lines) lines.push({ kind: 'modular', cells: l.map(parseFpCell) });
+  }
+  for (const t of p.nabner || []) for (const l of t.lines) lines.push({ kind: 'nabner', cells: l.map(parseFpCell) });
   // Cosmetic "line" objects: some exports carry constraints only as these
   // (sometimes tagged with the constraint they came from).
-  const FROM_CONSTRAINT = { whispers: 'whispers', renban: 'renban', palindrome: 'palindrome' };
+  const FROM_CONSTRAINT = {
+    whispers: 'whispers', renban: 'renban', palindrome: 'palindrome', betweenline: 'between',
+    regionsumline: 'regionsum', entropicline: 'entropic', modularline: 'modular', nabner: 'nabner',
+  };
   const untagged = [];
   for (const l of p.line || []) {
     const tag = String(l.fromConstraint || '').toLowerCase().replace(/[^a-z]/g, '');
@@ -631,7 +771,9 @@ function convertFpuzzles(p, ctx) {
         if (dr > 1 || dc > 1) reject('cosmetic line skips cells');
       }
       if (kind) {
-        if (!(p[kind === 'whispers' ? 'whispers' : kind] || []).length) lines.push({ kind, cells });
+        // Skip it when the same constraint is also present semantically --
+        // then the cosmetic line is just a duplicate drawing of it.
+        if (!(p[tag] || []).length) lines.push({ kind, cells });
       } else if (tag) {
         reject(`cosmetic line from unsupported constraint ${l.fromConstraint}`);
       } else {
@@ -656,6 +798,25 @@ function convertFpuzzles(p, ctx) {
     }).flat();
   }
   if (p.antiknight) entry.antiKnight = true;
+  if (p.antiking) entry.antiKing = true;
+  if (p.nonconsecutive) entry.nonConsecutive = true;
+  if (p.disjointgroups) entry.disjointGroups = true;
+  if (p.extraregion && p.extraregion.length) {
+    entry.extraRegions = p.extraregion.map(region => {
+      const cells = region.cells.map(parseFpCell);
+      if (cells.length !== 9) reject(`extra region with ${cells.length} cells`);
+      return cells;
+    });
+  }
+  if (p.quadruple && p.quadruple.length) {
+    entry.quadruples = p.quadruple.map(q => {
+      const cells = q.cells.map(parseFpCell);
+      if (cells.length !== 4) reject(`quadruple over ${cells.length} cells`);
+      const values = (q.values || []).map(Number);
+      if (values.length === 0 || values.some(v => !(v >= 1 && v <= 9))) reject('quadruple without digits');
+      return { cells, values };
+    });
+  }
   // f-puzzles' "diagonal+" runs bottom-left to top-right (our "anti").
   if (p['diagonal+'] || p['diagonal-']) {
     entry.diagonals = p['diagonal+'] && p['diagonal-'] ? true : (p['diagonal+'] ? 'anti' : 'main');
@@ -694,6 +855,24 @@ function convertFpuzzles(p, ctx) {
       return { cells: k.cells.map(parseFpCell), dir, sum: Number(k.value) };
     });
   }
+  // Fog of war. f-puzzles' "fogofwar" cells are lamps (their 3x3 starts
+  // lit); "foglight" cells light only themselves. Givens light themselves
+  // too, which is what the app's seedRadius 0 mode reproduces.
+  const fogLit = new Set();
+  for (const rc of p.fogofwar || []) {
+    const [r, c] = parseFpCell(rc);
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = r + dr, nc = c + dc;
+        if (inGrid([nr, nc])) fogLit.add(`${nr},${nc}`);
+      }
+    }
+  }
+  for (const rc of p.foglight || []) fogLit.add(parseFpCell(rc).join(','));
+  if ((p.fogofwar || []).length || (p.foglight || []).length) {
+    entry.fog = buildFog(fogLit, givens, []);
+  }
+
   const solution = Array.isArray(p.solution) && p.solution.length === 81 && p.solution.every(v => v >= 1 && v <= 9)
     ? Array.from({ length: 9 }, (_, r) => p.solution.slice(r * 9, r * 9 + 9).map(Number))
     : null;

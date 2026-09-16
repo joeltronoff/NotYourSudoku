@@ -30,6 +30,9 @@ function appAcceptsSolution(engine, entry, grid) {
   const conflicts = engine.findVariantConflicts(grid, {
     cages: entry.cages, kropki: entry.kropki, kropkiNegative: entry.kropkiNegative,
     lines: entry.lines, arrows: entry.arrows, antiKnight: entry.antiKnight,
+    antiKing: entry.antiKing, nonConsecutive: entry.nonConsecutive,
+    disjointGroups: entry.disjointGroups, extraRegions: entry.extraRegions,
+    quadruples: entry.quadruples,
     sandwich: entry.sandwich, xv: entry.xv, littleKiller: entry.littleKiller,
     diagonals: entry.diagonals, oddEven: entry.oddEven,
   });

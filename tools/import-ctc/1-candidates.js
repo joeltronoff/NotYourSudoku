@@ -31,6 +31,18 @@ const SUPPORTED_TAGS = {
   'XV': 'xv',
   'Diagonal': 'diagonal',
   'O/E': 'oddeven',
+  'Fog': 'fog',
+  'Anti-King': 'antiking',
+  'Non-Consecutive': 'nonconsecutive',
+  'Disjoint Groups': 'disjoint',
+  'Extra Regions': 'extraregions',
+  'Quadruple': 'quadruple',
+  'Between Lines': 'lines',
+  'Region Sum Lines': 'lines',
+  'Entropic Lines': 'lines',
+  'Modular Lines': 'lines',
+  'Nabner': 'lines',
+  'Dutch Whispers': 'lines',
 };
 
 async function main() {

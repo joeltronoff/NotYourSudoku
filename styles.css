@@ -231,12 +231,13 @@ button {
 }
 
 /* Killer cages and kropki dots for variant puzzles — a static SVG drawn
-   once per puzzle load, sitting above cell backgrounds/highlights but
-   below the thicker 3x3 box-separator overlay (z-index 2). */
+   once per puzzle load. Sits above the cell borders and the 3x3 box
+   separators (z-index 2), so a dot on a box boundary isn't sliced in half
+   by the thick separator, and still below the digit layer. */
 .constraint-overlay {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
   pointer-events: none;
 }
 .constraint-svg { width: 100%; height: 100%; display: block; }
@@ -265,17 +266,39 @@ button {
   dominant-baseline: central;
 }
 
-/* Thermo/whispers/renban/palindrome/arrow decorations are drawn per-cell
-   (see computeCellDecorations in app.js), each as a small SVG sized to
-   exactly one cell and inserted ahead of the digit in that cell's own
-   DOM order — so the digit always paints on top, no translucency
-   needed. */
-.cell-deco-svg {
+/* Thermo/whispers/renban/palindrome/arrow/diagonal/odd-even decorations:
+   one board-wide SVG (see renderDecorations in app.js) stacked above the
+   cell borders and the 3x3 box separators, but below the digit layer. Each
+   line is therefore one continuous stroke that runs across grid lines
+   instead of being chopped into per-cell pieces by them. */
+.deco-overlay {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  z-index: 3;
   pointer-events: none;
+}
+.deco-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* Digits and pencil marks: the top layer, so a line passing through a cell
+   never sits over its digit. Purely visual — all input still goes to the
+   cells underneath. */
+.board-digits {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  pointer-events: none;
+}
+.dcell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+  font-family: var(--serif);
+  font-variant-numeric: tabular-nums;
 }
 .line-path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .line-thermo { stroke: #CFC7B8; stroke-width: 1.4; }
@@ -283,6 +306,26 @@ button {
 .line-whispers { stroke: #6FA85C; stroke-width: 1.9; }
 .line-renban { stroke: #B98FD1; stroke-width: 1.9; }
 .line-palindrome { stroke: #A9A296; stroke-width: 1.9; }
+.line-whispers-dutch { stroke: #D98A3D; stroke-width: 1.9; }
+.line-between { stroke: #9AA3AD; stroke-width: 1.5; }
+.between-end { fill: none; stroke: #9AA3AD; stroke-width: 0.55; }
+.line-regionsum { stroke: #5B8FD6; stroke-width: 1.9; }
+.line-entropic { stroke: #46A9A2; stroke-width: 1.9; }
+.line-modular { stroke: #A9764E; stroke-width: 1.9; }
+.line-nabner { stroke: #8C8C8C; stroke-width: 1.9; }
+.extra-region { fill: rgba(122, 143, 178, 0.16); }
+.extra-region-1 { fill: rgba(176, 134, 90, 0.16); }
+.extra-region-2 { fill: rgba(126, 168, 120, 0.16); }
+.extra-region-3 { fill: rgba(168, 124, 160, 0.16); }
+.quad-circle { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 0.3; }
+.quad-label {
+  font-size: 2.1px;
+  font-family: var(--sans);
+  font-weight: 600;
+  fill: var(--ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
 .arrow-line { stroke: var(--ink-soft); stroke-width: 0.5; }
 .arrow-head { fill: none; stroke: var(--ink-soft); stroke-width: 0.5; stroke-linecap: round; stroke-linejoin: round; }
 .arrow-circle { fill: none; stroke: var(--ink-soft); stroke-width: 0.6; }
@@ -324,7 +367,7 @@ button {
 .box-line-v { top: 0; bottom: 0; width: 3px; transform: translateX(-50%); }
 .box-line-h { left: 0; right: 0; height: 3px; transform: translateY(-50%); }
 
-.cell .value {
+.dcell .value {
   font-size: clamp(16px, 4.2vmin, 30px);
   font-size: 86cqh;
   line-height: 1;
@@ -334,9 +377,9 @@ button {
   transform: translateY(4.4%);
   color: var(--given);
 }
-.cell.user .value { color: var(--user-entry); }
-.cell.given .value { color: var(--ink); }
-.cell.conflict .value { color: var(--error); }
+.dcell.user .value { color: var(--user-entry); }
+.dcell.given .value { color: var(--ink); }
+.dcell.conflict .value { color: var(--error); }
 
 /* Interaction states are semi-transparent overlays, not solid fills,
    so a shaded cell's color still shows through while selected/peered
@@ -827,12 +870,18 @@ button {
 
 .menu-sort-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   margin: 12px 0 10px;
 }
 .menu-sort-row .chip { padding: 8px 4px; }
 .menu-puzzle-list { display: flex; flex-direction: column; gap: 8px; }
+.menu-puzzle-empty {
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+}
 .menu-puzzle-row {
   display: flex;
   align-items: center;
