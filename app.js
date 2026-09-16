@@ -16,6 +16,7 @@
     digitCounts: true,
     autoClearNotes: true,
     cageCalculator: true,
+    showSeen: true,
   };
   let settings = { ...DEFAULT_SETTINGS };
   function loadSettings() {
@@ -167,13 +168,65 @@
     return !!revealed && !revealed.has(`${r},${c}`);
   }
 
-  function isKnightMove(r1, c1, r2, c2) {
-    const dr = Math.abs(r1 - r2), dc = Math.abs(c1 - c2);
-    return (dr === 1 && dc === 2) || (dr === 2 && dc === 1);
+  // Every cell the selection "sees": one that can't repeat a digit with it.
+  // That's the row, column and box, plus whatever extra rules this puzzle
+  // carries — knight and king moves, both diagonals, cages, extra regions
+  // and disjoint groups — so the highlight tells the truth for the puzzle
+  // in front of you, not just for a classic grid.
+  let seenCache = null;
+  function seenBySelection() {
+    const key = JSON.stringify(state.selected);
+    if (seenCache && seenCache.key === key) return seenCache.set;
+    const seen = new Set();
+    const add = (r, c) => { if (r >= 0 && r < 9 && c >= 0 && c < 9) seen.add(`${r},${c}`); };
+    for (const [sr, sc] of state.selected) {
+      for (let i = 0; i < 9; i++) { add(sr, i); add(i, sc); }
+      const br = Math.floor(sr / 3) * 3, bc = Math.floor(sc / 3) * 3;
+      for (let dr = 0; dr < 3; dr++) for (let dc = 0; dc < 3; dc++) add(br + dr, bc + dc);
+      if (state.antiKnight) {
+        for (const [dr, dc] of [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]) add(sr + dr, sc + dc);
+      }
+      if (state.antiKing) {
+        for (const [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) add(sr + dr, sc + dc);
+      }
+      if (state.diagonals) {
+        if (state.diagonals !== "anti" && sr === sc) for (let i = 0; i < 9; i++) add(i, i);
+        if (state.diagonals !== "main" && sr + sc === 8) for (let i = 0; i < 9; i++) add(i, 8 - i);
+      }
+      if (state.disjointGroups) {
+        const pos = (sr % 3) * 3 + (sc % 3);
+        for (let box = 0; box < 9; box++) {
+          add(Math.floor(box / 3) * 3 + Math.floor(pos / 3), (box % 3) * 3 + (pos % 3));
+        }
+      }
+      for (const cage of state.cages || []) {
+        if (cage.cells.some(([cr, cc]) => cr === sr && cc === sc)) cage.cells.forEach(([cr, cc]) => add(cr, cc));
+      }
+      for (const region of state.extraRegions || []) {
+        if (region.some(([cr, cc]) => cr === sr && cc === sc)) region.forEach(([cr, cc]) => add(cr, cc));
+      }
+      for (const line of state.lines || []) {
+        // A renban's digits are all different, so its cells see each other.
+        if (line.kind === "renban" && line.cells.some(([cr, cc]) => cr === sr && cc === sc)) {
+          line.cells.forEach(([cr, cc]) => add(cr, cc));
+        }
+      }
+    }
+    seenCache = { key, set: seen };
+    return seen;
   }
 
   // Cell-shading palette for the "color" tool. Soft enough that given/user/
   // conflict text stays legible on top, but distinct from one another.
+  // Several colours on one cell are drawn as equal diagonal bands, so each
+  // one stays identifiable instead of blending into a new colour.
+  function shadeBackground(list) {
+    if (list.length === 1) return CELL_COLORS[list[0]];
+    const step = 100 / list.length;
+    const stops = list.map((index, i) => `${CELL_COLORS[index]} ${i * step}% ${(i + 1) * step}%`);
+    return `linear-gradient(135deg, ${stops.join(", ")})`;
+  }
+
   const CELL_COLORS = [
     "#E15D50", // red
     "#E8922E", // orange
@@ -439,6 +492,7 @@
     ["setDigitCounts", "digitCounts"],
     ["setAutoClear", "autoClearNotes"],
     ["setCageCalc", "cageCalculator"],
+    ["setShowSeen", "showSeen"],
   ];
 
   function renderSettings() {
@@ -759,14 +813,26 @@
   function emptyNotes() {
     return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set()));
   }
+  // A cell can carry several highlight colours at once -- solvers use one
+  // colour per hypothesis, and cells that belong to two of them need both.
+  // Stored as a list of palette indexes; older saves held a single index
+  // (or null), which normalizeColors lifts into the list form.
   function emptyColors() {
-    return Array.from({ length: 9 }, () => Array(9).fill(null));
+    return Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => []));
+  }
+
+  function normalizeColors(colors) {
+    if (!Array.isArray(colors)) return emptyColors();
+    return colors.map(row => row.map(value => {
+      if (Array.isArray(value)) return value.slice();
+      return value === null || value === undefined ? [] : [value];
+    }));
   }
   function cloneNotes(notes) {
     return notes.map(row => row.map(s => new Set(s)));
   }
   function cloneColors(colors) {
-    return colors.map(row => row.slice());
+    return colors.map(row => row.map(list => list.slice()));
   }
 
   function newGame(difficulty) {
@@ -961,7 +1027,8 @@
     return game.grid.some((row, r) => row.some((v, c) => v !== game.givens[r][c]))
       || game.cornerNotes.some(row => row.some(list => list.length > 0))
       || game.centerNotes.some(row => row.some(list => list.length > 0))
-      || game.colors.some(row => row.some(v => v !== null && v !== undefined));
+      || game.colors.some(row => row.some(v => (Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined)))
+      || (game.pen || []).length > 0;
   }
 
   function savedGameFor(puzzleId) {
@@ -997,7 +1064,7 @@
         fog: data.fog || null,
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
-        colors: data.colors,
+        colors: normalizeColors(data.colors),
         pen: data.pen || [],
         selected: [],
         inputMode: "digit",
@@ -1057,23 +1124,21 @@
         }
 
         const shade = state.colors[r][c];
-        if (shade !== null && shade !== undefined) {
-          cell.style.setProperty("--cell-shade", CELL_COLORS[shade]);
+        if (shade && shade.length > 0) {
+          cell.style.setProperty("--cell-shade", shadeBackground(shade));
           // Same-colored neighbors read as one shape rather than a row of
           // separate tiles — hide the thin grid line between them (the
           // thicker 3x3 box-separator overlay is unaffected either way).
-          if (c < 8 && state.colors[r][c + 1] === shade) cell.style.borderRightColor = "transparent";
-          if (r < 8 && state.colors[r + 1][c] === shade) cell.style.borderBottomColor = "transparent";
+          const sameShade = other => other && other.length === shade.length && other.every((v, i) => v === shade[i]);
+          if (c < 8 && sameShade(state.colors[r][c + 1])) cell.style.borderRightColor = "transparent";
+          if (r < 8 && sameShade(state.colors[r + 1][c])) cell.style.borderBottomColor = "transparent";
         }
 
         if (state.selected.length > 0) {
           const isSelected = state.selected.some(([sr, sc]) => sr === r && sc === c);
           if (isSelected) {
             cell.classList.add("selected");
-          } else if (state.selected.some(([sr, sc]) =>
-            sr === r || sc === c || (Math.floor(sr / 3) === Math.floor(r / 3) && Math.floor(sc / 3) === Math.floor(c / 3))
-            || (state.antiKnight && isKnightMove(sr, sc, r, c))
-          )) {
+          } else if (settings.showSeen && seenBySelection().has(`${r},${c}`)) {
             cell.classList.add("peer");
           }
           const [lr, lc] = state.selected[state.selected.length - 1];
@@ -1174,10 +1239,12 @@
           if (state.grid[r][c] !== 0) counts[state.grid[r][c]]++;
     }
 
-    let selectedColor = null;
+    // A swatch is marked when every selected cell carries that colour.
+    const shared = new Set();
     if (state.selected.length > 0) {
-      const colorsInSelection = state.selected.map(([r, c]) => state.colors[r][c]);
-      if (colorsInSelection.every(v => v === colorsInSelection[0])) selectedColor = colorsInSelection[0];
+      for (let i = 0; i < CELL_COLORS.length; i++) {
+        if (state.selected.every(([r, c]) => (state.colors[r][c] || []).includes(i))) shared.add(i);
+      }
     }
 
     for (let n = 1; n <= 9; n++) {
@@ -1186,7 +1253,7 @@
       if (isColorMode) {
         btn.classList.add("color-swatch");
         btn.style.background = CELL_COLORS[n - 1];
-        if (selectedColor === n - 1) btn.classList.add("active-swatch");
+        if (shared.has(n - 1)) btn.classList.add("active-swatch");
       } else {
         btn.textContent = n;
         if (counts[n] >= 9) btn.classList.add("exhausted");
@@ -1674,11 +1741,14 @@
     if (state.inputMode === "color") {
       pushHistory();
       const colorIndex = n - 1;
-      // If every selected cell already has this color, toggle it off everywhere;
-      // otherwise set it on every selected cell.
-      const allHaveColor = state.selected.every(([r, c]) => state.colors[r][c] === colorIndex);
+      // If every selected cell already carries this colour, take it off them
+      // all; otherwise add it, keeping whatever colours they already have.
+      const allHaveColor = state.selected.every(([r, c]) => (state.colors[r][c] || []).includes(colorIndex));
       state.selected.forEach(([r, c]) => {
-        state.colors[r][c] = allHaveColor ? null : colorIndex;
+        const list = state.colors[r][c] || [];
+        state.colors[r][c] = allHaveColor
+          ? list.filter(v => v !== colorIndex)
+          : (list.includes(colorIndex) ? list : [...list, colorIndex].sort((a, b) => a - b));
       });
       saveState();
       render();
@@ -1749,7 +1819,7 @@
         state.cornerNotes[r][c].clear();
         state.centerNotes[r][c].clear();
       }
-      state.colors[r][c] = null;
+      state.colors[r][c] = [];
     });
     saveState();
     render();
