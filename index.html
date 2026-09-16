@@ -195,6 +195,8 @@
               <div class="constraint-overlay" id="constraintOverlay"></div>
               <!-- Lines/arrows sit above the grid lines, digits above those. -->
               <div class="deco-overlay" id="decoOverlay"></div>
+              <!-- Your own pen marks, above the puzzle's own art. -->
+              <div class="pen-overlay" id="penOverlay"></div>
               <div class="board-digits" id="boardDigits"></div>
             </div>
             <div class="little-killer-overlay" id="littleKillerOverlay"></div>
@@ -279,6 +281,8 @@
 
       <div class="hint-output" id="hintOutput"></div>
 
+      <div class="selection-sum" id="selectionSum" hidden></div>
+
       <div class="input-row">
         <div class="mobile-numpad" id="mobileNumpad"></div>
 
@@ -304,6 +308,12 @@
               <circle cx="9.3" cy="12" r="1.3" fill="currentColor" stroke="none"/>
               <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/>
               <circle cx="14.7" cy="12" r="1.3" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
+          <button class="mode-btn" data-mode="pen" title="Pen" aria-label="Draw pen marks on the grid">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16.5 3.6a2.1 2.1 0 0 1 3 3L8 18.1l-4 1 1-4Z"/>
+              <path d="M14.5 5.6l3.9 3.9"/>
             </svg>
           </button>
           <button class="mode-btn" data-mode="color" title="Shade cell" aria-label="Shade cell with color">

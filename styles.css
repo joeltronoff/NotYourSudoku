@@ -15,6 +15,7 @@
   --grid-line-strong: #2B2A27;
   --fog: #BFB8A6;
   --fog-dark: #A79E88;
+  --pen: #2F6F8F;
   --line-thin: 1px;
   --line-thick: 2.5px;
   --radius: 10px;
@@ -41,6 +42,7 @@
   --grid-line-strong: #C8C4BA;
   --fog: #4A463D;
   --fog-dark: #3A362F;
+  --pen: #7FC4E8;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -60,6 +62,7 @@
     --grid-line-strong: #C8C4BA;
     --fog: #4A463D;
     --fog-dark: #3A362F;
+    --pen: #7FC4E8;
   }
 }
 
@@ -319,6 +322,37 @@ button {
   pointer-events: none;
 }
 .deco-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* Pen marks: your own annotations, drawn above the puzzle's constraint art
+   but still under the digits. */
+.pen-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.pen-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.pen-line {
+  stroke: var(--pen);
+  stroke-width: 0.55;
+  stroke-linecap: round;
+  fill: none;
+}
+.pen-dot { fill: var(--pen); }
+
+/* Live total of whatever is selected — the thing you'd otherwise add up in
+   your head on a killer, arrow or sandwich clue. */
+.selection-sum {
+  margin-top: 8px;
+  padding: 7px 12px;
+  background: var(--panel-bg);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.selection-sum strong { color: var(--ink); font-weight: 700; }
 
 /* Digits and pencil marks: the top layer, so a line passing through a cell
    never sits over its digit. Purely visual — all input still goes to the

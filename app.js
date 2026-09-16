@@ -802,6 +802,7 @@
       inputMode: "digit", // "digit" | "corner" | "center" | "color"
       mistakes: 0,
       seconds: 0,
+      pen: [],
       history: [],
       future: [],
       hintCell: null,
@@ -856,6 +857,7 @@
       inputMode: "digit",
       mistakes: 0,
       seconds: 0,
+      pen: [],
       history: [],
       future: [],
       hintCell: null,
@@ -927,6 +929,7 @@
       cornerNotes: state.cornerNotes.map(row => row.map(set => [...set])),
       centerNotes: state.centerNotes.map(row => row.map(set => [...set])),
       colors: state.colors,
+      pen: state.pen,
       mistakes: state.mistakes,
       seconds: state.seconds,
       won: state.won,
@@ -995,6 +998,7 @@
         cornerNotes: data.cornerNotes.map(row => row.map(arr => new Set(arr))),
         centerNotes: data.centerNotes.map(row => row.map(arr => new Set(arr))),
         colors: data.colors,
+        pen: data.pen || [],
         selected: [],
         inputMode: "digit",
         mistakes: data.mistakes,
@@ -1087,6 +1091,8 @@
       }
     }
     renderDigits(conflicts, fogRevealed);
+    renderPen();
+    renderSelectionSum();
     renderDecorationFog(fogRevealed);
     renderNumpad();
   }
@@ -1138,6 +1144,23 @@
         digitsEl.appendChild(box);
       }
     }
+  }
+
+  // Total of the digits in the selected cells -- the arithmetic you'd
+  // otherwise do in your head on a cage, an arrow or a sandwich.
+  const selectionSumEl = document.getElementById("selectionSum");
+  function renderSelectionSum() {
+    const picked = state.selected || [];
+    if (picked.length < 2) {
+      selectionSumEl.hidden = true;
+      return;
+    }
+    const values = picked.map(([r, c]) => state.grid[r][c]).filter(v => v !== 0);
+    const total = values.reduce((a, b) => a + b, 0);
+    selectionSumEl.hidden = false;
+    selectionSumEl.innerHTML = values.length === picked.length
+      ? `${picked.length} cells &middot; sum <strong>${total}</strong>`
+      : `${picked.length} cells &middot; ${values.length} filled, sum so far <strong>${total}</strong>`;
   }
 
   function renderNumpad() {
@@ -1518,6 +1541,69 @@
     group.setAttribute("clip-path", "url(#decoFogClip)");
   }
 
+  // ---------------- Pen marks ----------------
+  // Free annotation on its own layer: strokes snap to a half-cell lattice,
+  // so they line up with cell centres, edges and corners -- which is how
+  // you mark a region border, a pair, or a loop. Drawing over a segment
+  // again rubs it out.
+  const PEN_STEP = 5;   // half a cell in the board's 0..90 space
+  const penOverlayEl = document.getElementById("penOverlay");
+
+  function renderPen() {
+    penOverlayEl.innerHTML = "";
+    const marks = state.pen || [];
+    if (marks.length === 0) return;
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 90 90");
+    svg.setAttribute("class", "pen-svg");
+    for (const [x1, y1, x2, y2] of marks) {
+      if (x1 === x2 && y1 === y2) {
+        const dot = document.createElementNS(SVG_NS, "circle");
+        dot.setAttribute("cx", x1);
+        dot.setAttribute("cy", y1);
+        dot.setAttribute("r", 0.7);
+        dot.setAttribute("class", "pen-dot");
+        svg.appendChild(dot);
+        continue;
+      }
+      const line = document.createElementNS(SVG_NS, "line");
+      line.setAttribute("x1", x1);
+      line.setAttribute("y1", y1);
+      line.setAttribute("x2", x2);
+      line.setAttribute("y2", y2);
+      line.setAttribute("class", "pen-line");
+      svg.appendChild(line);
+    }
+    penOverlayEl.appendChild(svg);
+  }
+
+  // Board coordinates (0..90) for a pointer event, snapped to the lattice.
+  function penNodeAt(event) {
+    const rect = boardEl.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 90;
+    const y = ((event.clientY - rect.top) / rect.height) * 90;
+    const snap = v => Math.round(v / PEN_STEP) * PEN_STEP;
+    return [Math.max(0, Math.min(90, snap(x))), Math.max(0, Math.min(90, snap(y)))];
+  }
+
+  const segmentKey = (a, b) => {
+    const [p, q] = a[0] < b[0] || (a[0] === b[0] && a[1] <= b[1]) ? [a, b] : [b, a];
+    return `${p[0]},${p[1]},${q[0]},${q[1]}`;
+  };
+
+  function togglePenSegment(a, b) {
+    const key = segmentKey(a, b);
+    const index = state.pen.findIndex(seg => segmentKey([seg[0], seg[1]], [seg[2], seg[3]]) === key);
+    if (index >= 0) state.pen.splice(index, 1);
+    else {
+      const [p, q] = key.split(",").map(Number).reduce((acc, v, i) => {
+        if (i < 2) acc[0].push(v); else acc[1].push(v);
+        return acc;
+      }, [[], []]);
+      state.pen.push([p[0], p[1], q[0], q[1]]);
+    }
+  }
+
   function selectCell(r, c) {
     state.selected = [[r, c]];
     hintOutput.classList.remove("show");
@@ -1576,17 +1662,13 @@
 
   function pushHistory() {
     state.future = [];   // a fresh move drops anything that was redoable
-    state.history.push({
-      grid: cloneGrid(state.grid),
-      cornerNotes: cloneNotes(state.cornerNotes),
-      centerNotes: cloneNotes(state.centerNotes),
-      colors: cloneColors(state.colors),
-      mistakes: state.mistakes,
-    });
+    state.history.push(snapshot());
     if (state.history.length > 50) state.history.shift();
   }
 
   function inputNumber(n) {
+    // Pen mode draws on the grid; the keypad has nothing to do there.
+    if (state.inputMode === "pen") return;
     if (state.selected.length === 0 || state.won) return;
 
     if (state.inputMode === "color") {
@@ -1650,6 +1732,15 @@
   }
 
   function eraseCell() {
+    // In pen mode, erase clears the drawing rather than the cells.
+    if (state.inputMode === "pen") {
+      if (state.pen.length === 0) return;
+      pushHistory();
+      state.pen = [];
+      saveState();
+      render();
+      return;
+    }
     if (state.selected.length === 0) return;
     pushHistory();
     state.selected.forEach(([r, c]) => {
@@ -1670,6 +1761,7 @@
       cornerNotes: cloneNotes(state.cornerNotes),
       centerNotes: cloneNotes(state.centerNotes),
       colors: cloneColors(state.colors),
+      pen: state.pen.slice(),
       mistakes: state.mistakes,
     };
   }
@@ -1679,6 +1771,7 @@
     state.cornerNotes = snap.cornerNotes;
     state.centerNotes = snap.centerNotes;
     state.colors = snap.colors;
+    state.pen = snap.pen || [];
     state.mistakes = snap.mistakes;
     forceFullCheck = false;
     saveState();
@@ -1708,6 +1801,7 @@
     state.cornerNotes = emptyNotes();
     state.centerNotes = emptyNotes();
     state.colors = emptyColors();
+    state.pen = [];
     state.mistakes = 0;
     state.seconds = 0;
     state.won = false;
@@ -2090,7 +2184,7 @@
     if ((e.ctrlKey || e.metaKey) && key === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if ((e.ctrlKey || e.metaKey) && (key === "y" || (key === "z" && e.shiftKey))) { e.preventDefault(); redo(); return; }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-      const modeKey = { z: "digit", x: "corner", c: "center", v: "color" }[key];
+      const modeKey = { z: "digit", x: "corner", c: "center", v: "color", b: "pen" }[key];
       if (modeKey) { setInputMode(modeKey); return; }
     }
 
@@ -2121,21 +2215,65 @@
   // pointerenter) so it keeps working even though render() replaces every
   // cell element on each extension of the selection.
   let isDragSelecting = false;
+  // In pen mode the same drag draws instead of selecting: the stroke walks
+  // the lattice, toggling each segment it crosses (so drawing back over a
+  // line rubs it out), and one tap without moving leaves a dot.
+  let penFrom = null;
+  let penDrew = false;
   boardEl.addEventListener("pointerdown", (e) => {
+    if (state.inputMode === "pen") {
+      pushHistory();
+      penFrom = penNodeAt(e);
+      penDrew = false;
+      boardEl.setPointerCapture && boardEl.setPointerCapture(e.pointerId);
+      return;
+    }
     const cellEl = e.target.closest(".cell");
     if (!cellEl) return;
     isDragSelecting = true;
     selectCell(parseInt(cellEl.dataset.r, 10), parseInt(cellEl.dataset.c, 10));
   });
   boardEl.addEventListener("pointermove", (e) => {
+    if (penFrom) {
+      const to = penNodeAt(e);
+      if (to[0] === penFrom[0] && to[1] === penFrom[1]) return;
+      // Only join neighbouring lattice points, so a fast drag lays down a
+      // run of short segments rather than one long diagonal jump.
+      const steps = Math.max(Math.abs(to[0] - penFrom[0]), Math.abs(to[1] - penFrom[1])) / PEN_STEP;
+      if (steps > 1) {
+        const start = penFrom;
+        const dx = (to[0] - start[0]) / steps, dy = (to[1] - start[1]) / steps;
+        for (let i = 1; i <= steps; i++) {
+          const next = [start[0] + dx * i, start[1] + dy * i];
+          togglePenSegment(penFrom, next);
+          penFrom = next;
+        }
+      } else {
+        togglePenSegment(penFrom, to);
+        penFrom = to;
+      }
+      penDrew = true;
+      renderPen();
+      saveState();
+      return;
+    }
     if (!isDragSelecting) return;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const cellEl = el && el.closest(".cell");
     if (!cellEl) return;
     extendSelection(parseInt(cellEl.dataset.r, 10), parseInt(cellEl.dataset.c, 10));
   });
-  document.addEventListener("pointerup", () => { isDragSelecting = false; });
-  document.addEventListener("pointercancel", () => { isDragSelecting = false; });
+  function endPenStroke() {
+    if (penFrom && !penDrew) {
+      togglePenSegment(penFrom, penFrom);   // a tap leaves (or lifts) a dot
+      renderPen();
+      saveState();
+    }
+    penFrom = null;
+    penDrew = false;
+  }
+  document.addEventListener("pointerup", () => { isDragSelecting = false; endPenStroke(); });
+  document.addEventListener("pointercancel", () => { isDragSelecting = false; endPenStroke(); });
 
   // ---------------- Install prompt (PWA) ----------------
   let deferredInstallPrompt = null;
