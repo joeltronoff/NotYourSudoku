@@ -2,7 +2,61 @@
   const STORAGE_KEY = "solvers-notebook-state-v3";
   const { generatePuzzle, computeCandidates, getHint, isBoardComplete, findConflicts, findVariantConflicts, cloneGrid } = window.SudokuEngine;
 
+  // ---------------- Settings ----------------
+  // Every assist is a preference, and every one of them starts off except
+  // the two that only remove bookkeeping (auto-clearing pencil marks and
+  // same-digit highlighting) -- the point is to help you keep track of what
+  // you worked out, never to work it out for you.
+  const SETTINGS_KEY = "solvers-notebook-settings-v1";
+  const DEFAULT_SETTINGS = {
+    theme: "system",          // system | light | dark
+    errorCheck: "full",       // full | classic | off
+    hideTimer: false,
+    highlightDigit: true,
+    digitCounts: true,
+    autoClearNotes: true,
+  };
+  let settings = { ...DEFAULT_SETTINGS };
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      settings = { ...DEFAULT_SETTINGS, ...(raw ? JSON.parse(raw) : {}) };
+    } catch (e) {
+      settings = { ...DEFAULT_SETTINGS };
+    }
+    applyTheme();
+  }
+  function saveSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+  }
+  function applyTheme() {
+    const root = document.documentElement;
+    if (settings.theme === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", settings.theme);
+    // Keep the browser chrome in step with the board.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      const dark = settings.theme === "dark"
+        || (settings.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      meta.setAttribute("content", dark ? "#1A1A18" : "#FAF9F6");
+    }
+  }
+
+  // What the board highlights, which the player can dial down or switch
+  // off. Win detection uses strictConflicts() instead, so a puzzle is never
+  // called solved on a grid that breaks its own rules.
+  // Set by the Check button so one explicit check still shows everything,
+  // whatever the highlight setting says; cleared on the next move.
+  let forceFullCheck = false;
+
   function currentConflicts() {
+    if (forceFullCheck) return strictConflicts();
+    if (settings.errorCheck === "off") return new Set();
+    if (settings.errorCheck === "classic") return new Set(findConflicts(state.grid));
+    return strictConflicts();
+  }
+
+  function strictConflicts() {
     const classic = findConflicts(state.grid);
     const variant = findVariantConflicts(state.grid, {
       cages: state.cages,
@@ -140,9 +194,12 @@
       return {
         completed: Array.isArray(data.completed) ? data.completed : [],
         classicSolved: data.classicSolved || 0,
+        favorites: Array.isArray(data.favorites) ? data.favorites : [],
+        bestTimes: data.bestTimes || {},       // puzzle id -> seconds
+        days: Array.isArray(data.days) ? data.days : [],  // YYYY-MM-DD solved on
       };
     } catch (e) {
-      return { completed: [], classicSolved: 0 };
+      return { completed: [], classicSolved: 0, favorites: [], bestTimes: {}, days: [] };
     }
   }
   function saveProgress(progress) {
@@ -152,9 +209,60 @@
     const progress = loadProgress();
     if (state.puzzleId) {
       if (!progress.completed.includes(state.puzzleId)) progress.completed.push(state.puzzleId);
+      const best = progress.bestTimes[state.puzzleId];
+      if (best == null || state.seconds < best) progress.bestTimes[state.puzzleId] = state.seconds;
     } else {
       progress.classicSolved += 1;
     }
+    const today = localDayKey(new Date());
+    if (!progress.days.includes(today)) progress.days.push(today);
+    saveProgress(progress);
+  }
+
+  // Local calendar day, not UTC -- a puzzle solved at 11pm counts for today.
+  function localDayKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+
+  // Longest run of consecutive days ending today or yesterday (so a streak
+  // stays alive until the day after you last played).
+  function streakFromDays(days) {
+    const set = new Set(days);
+    const day = new Date();
+    if (!set.has(localDayKey(day))) {
+      day.setDate(day.getDate() - 1);
+      if (!set.has(localDayKey(day))) return 0;
+    }
+    let count = 0;
+    while (set.has(localDayKey(day))) {
+      count++;
+      day.setDate(day.getDate() - 1);
+    }
+    return count;
+  }
+
+  function longestStreak(days) {
+    const sorted = [...new Set(days)].sort();
+    let best = 0, run = 0, prev = null;
+    for (const key of sorted) {
+      const d = new Date(`${key}T00:00:00`);
+      if (prev && (d - prev) === 86400000) run++;
+      else run = 1;
+      best = Math.max(best, run);
+      prev = d;
+    }
+    return best;
+  }
+
+  function isFavorite(id) {
+    return loadProgress().favorites.includes(id);
+  }
+
+  function toggleFavorite(id) {
+    const progress = loadProgress();
+    const i = progress.favorites.indexOf(id);
+    if (i >= 0) progress.favorites.splice(i, 1);
+    else progress.favorites.push(id);
     saveProgress(progress);
   }
 
@@ -164,6 +272,11 @@
       title: "Recommended",
       blurb: "A mixed tour of the library, ordered from easiest to hardest.",
       icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l2.6 5.5 6 .72-4.43 4.16 1.16 5.92L12 16.6l-5.33 2.9 1.16-5.92L3.4 9.42l6-.72z" fill="currentColor" fill-opacity="0.18"/></svg>',
+    },
+    favorites: {
+      title: "Favourites",
+      blurb: "Puzzles you starred to come back to.",
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 17l-5.3 2.8 1.1-5.9L3.5 9.8l5.9-.8z"/></svg>',
     },
     killer: {
       title: "Killer Cages",
@@ -268,12 +381,16 @@
   function showGame() {
     mainMenuEl.hidden = true;
     variantMenuEl.hidden = true;
+    settingsScreenEl.hidden = true;
+    statsScreenEl.hidden = true;
     titlebarEl.hidden = false;
     layoutEl.hidden = false;
     if (state && !state.won) startTimer();
   }
   function showMenu() {
     variantMenuEl.hidden = true;
+    settingsScreenEl.hidden = true;
+    statsScreenEl.hidden = true;
     titlebarEl.hidden = true;
     layoutEl.hidden = true;
     mainMenuEl.hidden = false;
@@ -285,8 +402,133 @@
     mainMenuEl.hidden = true;
     titlebarEl.hidden = true;
     layoutEl.hidden = true;
+    settingsScreenEl.hidden = true;
+    statsScreenEl.hidden = true;
     variantMenuEl.hidden = false;
     renderVariantMenu(variantKey);
+  }
+
+  const settingsScreenEl = document.getElementById("settingsScreen");
+  const statsScreenEl = document.getElementById("statsScreen");
+
+  function showSettings() {
+    mainMenuEl.hidden = true;
+    variantMenuEl.hidden = true;
+    statsScreenEl.hidden = true;
+    titlebarEl.hidden = true;
+    layoutEl.hidden = true;
+    settingsScreenEl.hidden = false;
+    renderSettings();
+  }
+
+  function showStats() {
+    mainMenuEl.hidden = true;
+    variantMenuEl.hidden = true;
+    settingsScreenEl.hidden = true;
+    titlebarEl.hidden = true;
+    layoutEl.hidden = true;
+    statsScreenEl.hidden = false;
+    renderStats();
+  }
+
+  // ---------------- Settings screen ----------------
+  const SETTING_TOGGLES = [
+    ["setHideTimer", "hideTimer"],
+    ["setHighlightDigit", "highlightDigit"],
+    ["setDigitCounts", "digitCounts"],
+    ["setAutoClear", "autoClearNotes"],
+  ];
+
+  function renderSettings() {
+    document.querySelectorAll("#setTheme .chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.value === settings.theme);
+    });
+    document.querySelectorAll("#setErrorCheck .chip").forEach(chip => {
+      chip.classList.toggle("active", chip.dataset.value === settings.errorCheck);
+    });
+    SETTING_TOGGLES.forEach(([id, key]) => { document.getElementById(id).checked = !!settings[key]; });
+  }
+
+  function applySettingsToBoard() {
+    timerDisplay.hidden = !!settings.hideTimer;
+    if (state) {
+      renderNumpad();
+      render();
+    }
+  }
+
+  document.querySelectorAll("#setTheme .chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      settings.theme = chip.dataset.value;
+      saveSettings();
+      applyTheme();
+      renderSettings();
+    });
+  });
+  document.querySelectorAll("#setErrorCheck .chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      settings.errorCheck = chip.dataset.value;
+      saveSettings();
+      renderSettings();
+      applySettingsToBoard();
+    });
+  });
+  SETTING_TOGGLES.forEach(([id, key]) => {
+    document.getElementById(id).addEventListener("change", (e) => {
+      settings[key] = e.target.checked;
+      saveSettings();
+      applySettingsToBoard();
+    });
+  });
+
+  // ---------------- Statistics screen ----------------
+  function renderStats() {
+    const progress = loadProgress();
+    const library = window.PuzzleLibrary || [];
+    const solved = progress.completed.length;
+    const times = Object.values(progress.bestTimes);
+    const totalSeconds = times.reduce((a, b) => a + b, 0);
+    const streak = streakFromDays(progress.days);
+
+    document.getElementById("statsTagline").textContent =
+      solved === 0 ? "Solve a puzzle and it shows up here." : `${solved} of ${library.length} puzzles solved.`;
+
+    const cards = [
+      [solved, "Puzzles solved"],
+      [progress.classicSolved, "Generated classics"],
+      [streak, streak === 1 ? "Day streak" : "Day streak"],
+      [longestStreak(progress.days), "Best streak"],
+      [times.length ? formatTime(Math.round(totalSeconds / times.length)) : "—", "Average time"],
+      [times.length ? formatTime(Math.min(...times)) : "—", "Fastest solve"],
+    ];
+
+    // Per-category progress, with the best time in that category.
+    const rows = Object.keys(VARIANT_INFO).filter(key => key !== "recommended").map(key => {
+      const entries = entriesForVariant(key);
+      if (entries.length === 0) return null;
+      const done = entries.filter(e => progress.completed.includes(e.id));
+      const best = done.map(e => progress.bestTimes[e.id]).filter(v => v != null);
+      return {
+        title: VARIANT_INFO[key].title,
+        done: done.length,
+        total: entries.length,
+        best: best.length ? formatTime(Math.min(...best)) : "—",
+      };
+    }).filter(Boolean);
+
+    document.getElementById("statsBody").innerHTML = `
+      <div class="stats-grid">
+        ${cards.map(([value, label]) => `
+          <div class="stat-card"><div class="stat-value">${value}</div><div class="stat-label">${label}</div></div>
+        `).join("")}
+      </div>
+      <table class="stats-table">
+        <thead><tr><th>Category</th><th class="num">Solved</th><th class="num">Best</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr><td>${r.title}</td><td class="num">${r.done}/${r.total}</td><td class="num">${r.best}</td></tr>`).join("")}
+        </tbody>
+      </table>
+    `;
   }
 
   function capitalize(s) { return s[0].toUpperCase() + s.slice(1); }
@@ -341,6 +583,10 @@
 
   function entriesForVariant(key) {
     if (key === "recommended") return recommendedEntries();
+    if (key === "favorites") {
+      const favorites = loadProgress().favorites;
+      return (window.PuzzleLibrary || []).filter(e => favorites.includes(e.id));
+    }
     return (window.PuzzleLibrary || []).filter(e => entryVariants(e).includes(key));
   }
 
@@ -388,11 +634,13 @@
     recommendedEl.innerHTML = "";
     recommendedEl.parentElement.hidden = recommended.length === 0;
     if (recommended.length > 0) recommendedEl.appendChild(makeCard("recommended", recommended));
+    const favorites = entriesForVariant("favorites");
+    if (favorites.length > 0) recommendedEl.appendChild(makeCard("favorites", favorites));
 
     const listEl = document.getElementById("menuVariantList");
     listEl.innerHTML = "";
     Object.keys(VARIANT_INFO).forEach(key => {
-      if (key === "recommended") return;
+      if (key === "recommended" || key === "favorites") return;
       const entries = byVariant[key] || [];
       if (entries.length === 0) return;
       listEl.appendChild(makeCard(key, entries));
@@ -413,6 +661,12 @@
   // "default" keeps library order (hand-authored first, then newest imports).
   let variantMenuKey = null;
   let variantMenuSort = "default";
+  let variantMenuQuery = "";
+  const menuSearchEl = document.getElementById("menuSearch");
+  menuSearchEl.addEventListener("input", () => {
+    variantMenuQuery = menuSearchEl.value.trim().toLowerCase();
+    if (variantMenuKey) renderVariantMenu(variantMenuKey);
+  });
   document.querySelectorAll("#menuSortRow .chip").forEach(chip => {
     chip.addEventListener("click", () => {
       variantMenuSort = chip.dataset.sort;
@@ -425,6 +679,8 @@
     if (variantMenuKey !== key) {
       variantMenuKey = key;
       variantMenuSort = "default";
+      variantMenuQuery = "";
+      menuSearchEl.value = "";
     }
     document.getElementById("variantMenuTitle").textContent = info.title;
     document.getElementById("variantMenuBlurb").textContent = info.blurb;
@@ -444,14 +700,21 @@
       entries = entries.filter(e => e.source && e.source.gas)
         .sort((a, b) => (a.stars || 0) - (b.stars || 0) || b.source.gas - a.source.gas);
     }
+    if (variantMenuQuery) {
+      entries = entries.filter(e => (
+        `${e.title} ${e.blurb || ""}`.toLowerCase().includes(variantMenuQuery)
+      ));
+    }
     const listEl = document.getElementById("menuPuzzleList");
     listEl.innerHTML = "";
     if (entries.length === 0) {
       const empty = document.createElement("p");
       empty.className = "menu-puzzle-empty";
-      empty.textContent = variantMenuSort === "gas"
-        ? "No GAS puzzles in this category yet."
-        : "Nothing here — every puzzle in this category is solved.";
+      empty.textContent = variantMenuQuery
+        ? `Nothing matches "${menuSearchEl.value.trim()}".`
+        : variantMenuSort === "gas"
+          ? "No GAS puzzles in this category yet."
+          : "Nothing here — every puzzle in this category is solved.";
       listEl.appendChild(empty);
     }
     entries.forEach(entry => {
@@ -460,8 +723,10 @@
       const combinedTag = otherVariants.length > 0
         ? `<span class="menu-puzzle-combo">+ ${otherVariants.map(v => VARIANT_INFO[v] ? VARIANT_INFO[v].title : v).join(", ")}</span>`
         : "";
-      const row = document.createElement("button");
+      const row = document.createElement("div");
       row.className = "menu-puzzle-row" + (solved ? " solved" : "");
+      const best = progress.bestTimes[entry.id];
+      const favorite = progress.favorites.includes(entry.id);
       row.innerHTML = `
         <span class="menu-puzzle-check">${solved ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' : ""}</span>
         <span class="menu-puzzle-info">
@@ -471,9 +736,20 @@
             ${combinedTag}
           </span>
           <span class="menu-puzzle-blurb">${entry.blurb || ""}</span>
+          ${best != null ? `<span class="menu-puzzle-best">Best ${formatTime(best)}</span>` : ""}
         </span>
+        <button class="menu-puzzle-fav${favorite ? " on" : ""}" aria-label="${favorite ? "Remove from favourites" : "Add to favourites"}" aria-pressed="${favorite}">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="${favorite ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 17l-5.3 2.8 1.1-5.9L3.5 9.8l5.9-.8z"/></svg>
+        </button>
       `;
-      row.addEventListener("click", () => loadPuzzle(entry));
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".menu-puzzle-fav")) {
+          toggleFavorite(entry.id);
+          renderVariantMenu(key);
+          return;
+        }
+        loadPuzzle(entry);
+      });
       listEl.appendChild(row);
     });
   }
@@ -525,6 +801,7 @@
       mistakes: 0,
       seconds: 0,
       history: [],
+      future: [],
       hintCell: null,
       won: false,
     };
@@ -578,13 +855,20 @@
       mistakes: 0,
       seconds: 0,
       history: [],
+      future: [],
       hintCell: null,
       won: false,
     };
+    // Coming back to a puzzle you'd already started picks up your board,
+    // notes, colours and clock rather than wiping them.
+    const saved = savedGameFor(entry.id);
+    if (saved) state = stateFromData(saved);
+
     difficultyDisplay.textContent = entry.title;
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
     setInputMode("digit");
+    timerDisplay.textContent = formatTime(state.seconds);
     startTimer();
     saveState();
     renderConstraintOverlays();
@@ -646,14 +930,43 @@
       won: state.won,
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable)); } catch (e) {}
+    if (state.puzzleId) saveGameFor(state.puzzleId, serializable);
   }
 
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return false;
-      const data = JSON.parse(raw);
-      state = {
+  // Several puzzles can be on the go at once: each library puzzle keeps its
+  // own saved board, so leaving one to try another and coming back later
+  // picks up where you left off. Only the most recent few are kept, since
+  // localStorage is small and a finished puzzle doesn't need a board.
+  const GAMES_KEY = "solvers-notebook-games-v1";
+  const MAX_SAVED_GAMES = 20;
+  function loadGames() {
+    try { return JSON.parse(localStorage.getItem(GAMES_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function saveGameFor(puzzleId, serializable) {
+    const games = loadGames();
+    if (serializable.won || !hasWork(serializable)) delete games[puzzleId];
+    else games[puzzleId] = { ...serializable, savedAt: Date.now() };
+    const ids = Object.keys(games).sort((a, b) => (games[b].savedAt || 0) - (games[a].savedAt || 0));
+    for (const id of ids.slice(MAX_SAVED_GAMES)) delete games[id];
+    try { localStorage.setItem(GAMES_KEY, JSON.stringify(games)); } catch (e) {}
+  }
+  // Has the player actually done anything on this board? An untouched
+  // puzzle isn't worth a save slot, and resuming one would be a no-op.
+  function hasWork(game) {
+    return game.grid.some((row, r) => row.some((v, c) => v !== game.givens[r][c]))
+      || game.cornerNotes.some(row => row.some(list => list.length > 0))
+      || game.centerNotes.some(row => row.some(list => list.length > 0))
+      || game.colors.some(row => row.some(v => v !== null && v !== undefined));
+  }
+
+  function savedGameFor(puzzleId) {
+    const game = loadGames()[puzzleId];
+    if (!game || game.won || !hasWork(game)) return null;
+    return game;
+  }
+
+  function stateFromData(data) {
+    return {
         difficulty: data.difficulty,
         puzzleId: data.puzzleId || null,
         title: data.title || null,
@@ -684,10 +997,18 @@
         inputMode: "digit",
         mistakes: data.mistakes,
         seconds: data.seconds,
-        history: [],
-        hintCell: null,
-        won: data.won,
-      };
+      history: [],
+      future: [],
+      hintCell: null,
+      won: data.won,
+    };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      state = stateFromData(JSON.parse(raw));
       difficultyDisplay.textContent = state.title || (state.difficulty[0].toUpperCase() + state.difficulty.slice(1));
       timerDisplay.textContent = formatTime(state.seconds);
       setInputMode("digit");
@@ -751,7 +1072,9 @@
           }
           const [lr, lc] = state.selected[state.selected.length - 1];
           const anchorVal = state.grid[lr][lc];
-          if (!isSelected && anchorVal !== 0 && anchorVal === val) cell.classList.add("same-value");
+          if (settings.highlightDigit && !isSelected && anchorVal !== 0 && anchorVal === val) {
+            cell.classList.add("same-value");
+          }
         }
 
         if (state.hintCell && state.hintCell[0] === r && state.hintCell[1] === c) {
@@ -842,6 +1165,12 @@
       } else {
         btn.textContent = n;
         if (counts[n] >= 9) btn.classList.add("exhausted");
+        else if (settings.digitCounts) {
+          const left = document.createElement("span");
+          left.className = "num-left";
+          left.textContent = 9 - counts[n];
+          btn.appendChild(left);
+        }
       }
       btn.addEventListener("click", () => inputNumber(n));
       numpadEl.appendChild(btn);
@@ -1200,6 +1529,7 @@
   }
 
   function pushHistory() {
+    state.future = [];   // a fresh move drops anything that was redoable
     state.history.push({
       grid: cloneGrid(state.grid),
       cornerNotes: cloneNotes(state.cornerNotes),
@@ -1250,7 +1580,7 @@
           state.mistakes++;
         }
         // clear this number from notes of peers for convenience
-        clearNoteFromPeers(r, c, n);
+        if (settings.autoClearNotes) clearNoteFromPeers(r, c, n);
       });
     }
     saveState();
@@ -1288,20 +1618,66 @@
     render();
   }
 
+  function snapshot() {
+    return {
+      grid: cloneGrid(state.grid),
+      cornerNotes: cloneNotes(state.cornerNotes),
+      centerNotes: cloneNotes(state.centerNotes),
+      colors: cloneColors(state.colors),
+      mistakes: state.mistakes,
+    };
+  }
+
+  function restore(snap) {
+    state.grid = snap.grid;
+    state.cornerNotes = snap.cornerNotes;
+    state.centerNotes = snap.centerNotes;
+    state.colors = snap.colors;
+    state.mistakes = snap.mistakes;
+    forceFullCheck = false;
+    saveState();
+    render();
+  }
+
   function undo() {
     const prev = state.history.pop();
     if (!prev) return;
-    state.grid = prev.grid;
-    state.cornerNotes = prev.cornerNotes;
-    state.centerNotes = prev.centerNotes;
-    state.colors = prev.colors;
-    state.mistakes = prev.mistakes;
+    state.future.push(snapshot());
+    restore(prev);
+  }
+
+  function redo() {
+    const next = state.future.pop();
+    if (!next) return;
+    state.history.push(snapshot());
+    restore(next);
+  }
+
+  // Back to the starting position, keeping the puzzle loaded. The current
+  // board goes on the undo stack, so a mis-tap here isn't destructive.
+  function restartPuzzle() {
+    if (!state) return;
+    pushHistory();
+    state.grid = cloneGrid(state.givens);
+    state.cornerNotes = emptyNotes();
+    state.centerNotes = emptyNotes();
+    state.colors = emptyColors();
+    state.mistakes = 0;
+    state.seconds = 0;
+    state.won = false;
+    state.hintCell = null;
+    state.selected = [];
+    forceFullCheck = false;
+    timerDisplay.textContent = formatTime(0);
+    winOverlay.classList.remove("show");
+    hintOutput.classList.remove("show");
+    startTimer();
     saveState();
     render();
   }
 
   function checkWin() {
-    if (isBoardComplete(state.grid) && currentConflicts().size === 0) {
+    if (isBoardComplete(state.grid) && strictConflicts().size === 0) {
       const alreadyWon = state.won;
       state.won = true;
       saveState();
@@ -1494,6 +1870,17 @@
   });
 
   document.getElementById("variantBackBtn").addEventListener("click", showMenu);
+  document.getElementById("settingsBackBtn").addEventListener("click", showMenu);
+  document.getElementById("statsBackBtn").addEventListener("click", showMenu);
+  document.getElementById("prefsBtn").addEventListener("click", showSettings);
+  document.getElementById("statsBtn").addEventListener("click", showStats);
+  document.getElementById("redoBtn").addEventListener("click", redo);
+  document.getElementById("restartBtn").addEventListener("click", () => {
+    if (!state) return;
+    const filled = state.grid.flat().filter(Boolean).length - state.givens.flat().filter(Boolean).length;
+    if (filled > 0 && !window.confirm("Clear your digits and start this puzzle again?")) return;
+    restartPuzzle();
+  });
   menuContinueEl.addEventListener("click", showGame);
 
   document.querySelectorAll("#menuDifficultyRow .chip").forEach(chip => {
@@ -1506,6 +1893,7 @@
   hintBtn.addEventListener("click", () => showHint("nudge"));
 
   document.getElementById("checkBtn").addEventListener("click", () => {
+    forceFullCheck = true;
     render();
     const conflicts = currentConflicts();
     hintOutput.innerHTML = conflicts.size > 0
@@ -1596,9 +1984,35 @@
 
   // Physical keyboard support (useful with a Fold's larger screen / attached keyboard)
   document.addEventListener("keydown", (e) => {
-    if (!state || layoutEl.hidden || state.selected.length === 0) return;
+    if (!state || layoutEl.hidden) return;
+    if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+
+    // Undo/redo, and the mode keys SudokuPad users already have in muscle
+    // memory (Z/X/C/V), plus Shift+digit for a corner mark and Ctrl+digit
+    // for a centre mark without leaving digit mode.
+    const key = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && key === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && (key === "y" || (key === "z" && e.shiftKey))) { e.preventDefault(); redo(); return; }
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+      const modeKey = { z: "digit", x: "corner", c: "center", v: "color" }[key];
+      if (modeKey) { setInputMode(modeKey); return; }
+    }
+
+    if (state.selected.length === 0) return;
     const [r, c] = state.selected[state.selected.length - 1];
-    if (e.key >= "1" && e.key <= "9") inputNumber(parseInt(e.key, 10));
+    if (e.key >= "1" && e.key <= "9") {
+      const digit = parseInt(e.key, 10);
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        const previous = state.inputMode;
+        setInputMode(e.shiftKey ? "corner" : "center");
+        inputNumber(digit);
+        setInputMode(previous);
+      } else {
+        inputNumber(digit);
+      }
+      e.preventDefault();
+      return;
+    }
     else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") eraseCell();
     else if (e.key === "ArrowUp") selectCell(Math.max(0, r - 1), c);
     else if (e.key === "ArrowDown") selectCell(Math.min(8, r + 1), c);
@@ -1658,6 +2072,8 @@
   // The menu is always the first thing shown; a saved in-progress game (if
   // any) is loaded into memory so "Continue" can drop straight back into it,
   // but the board itself only becomes visible once something is chosen.
+  loadSettings();
+  timerDisplay.hidden = !!settings.hideTimer;
   if (loadState()) {
     renderConstraintOverlays();
     renderRulesPanel();

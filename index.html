@@ -23,8 +23,18 @@
   <div class="menu-screen" id="mainMenu">
     <div class="menu-scroll">
       <header class="menu-header">
-        <h1>Solver's Notebook</h1>
-        <p class="menu-tagline">Pick a puzzle to start solving.</p>
+        <div class="menu-header-text">
+          <h1>Solver's Notebook</h1>
+          <p class="menu-tagline">Pick a puzzle to start solving.</p>
+        </div>
+        <div class="menu-header-actions">
+          <button class="icon-btn" id="statsBtn" title="Statistics" aria-label="Open statistics">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          </button>
+          <button class="icon-btn" id="prefsBtn" title="Settings" aria-label="Open settings">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
       </header>
 
       <button class="menu-continue" id="menuContinue" hidden>
@@ -69,6 +79,70 @@
     </div>
   </div>
 
+  <!-- Settings: player preferences, all stored locally. -->
+  <div class="menu-screen" id="settingsScreen" hidden>
+    <div class="menu-scroll">
+      <header class="menu-subheader">
+        <button class="icon-btn menu-back" id="settingsBackBtn" aria-label="Back to menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="menu-subheader-text">
+          <h1>Settings</h1>
+          <p class="menu-tagline">Every assist is optional.</p>
+        </div>
+      </header>
+
+      <section class="settings-group">
+        <h2 class="settings-title">Appearance</h2>
+        <div class="settings-row">
+          <span class="settings-label">Theme</span>
+          <div class="segmented" id="setTheme">
+            <button class="chip" data-value="system">System</button>
+            <button class="chip" data-value="light">Light</button>
+            <button class="chip" data-value="dark">Dark</button>
+          </div>
+        </div>
+        <label class="settings-toggle"><input type="checkbox" id="setHideTimer"><span>Hide the timer while solving</span></label>
+      </section>
+
+      <section class="settings-group">
+        <h2 class="settings-title">Mistakes</h2>
+        <div class="settings-row">
+          <span class="settings-label">Highlight errors</span>
+          <div class="segmented" id="setErrorCheck">
+            <button class="chip" data-value="full">All rules</button>
+            <button class="chip" data-value="classic">Classic only</button>
+            <button class="chip" data-value="off">Off</button>
+          </div>
+        </div>
+        <p class="settings-note">"Classic only" flags repeated digits in a row, column or box but stays quiet about variant rules, so it can't spoil a deduction.</p>
+      </section>
+
+      <section class="settings-group">
+        <h2 class="settings-title">Assists</h2>
+        <label class="settings-toggle"><input type="checkbox" id="setHighlightDigit"><span>Highlight every cell holding the selected digit</span></label>
+        <label class="settings-toggle"><input type="checkbox" id="setDigitCounts"><span>Show how many of each digit are left</span></label>
+        <label class="settings-toggle"><input type="checkbox" id="setAutoClear"><span>Remove pencil marks automatically when a digit is placed</span></label>
+      </section>
+    </div>
+  </div>
+
+  <!-- Statistics -->
+  <div class="menu-screen" id="statsScreen" hidden>
+    <div class="menu-scroll">
+      <header class="menu-subheader">
+        <button class="icon-btn menu-back" id="statsBackBtn" aria-label="Back to menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <div class="menu-subheader-text">
+          <h1>Statistics</h1>
+          <p class="menu-tagline" id="statsTagline"></p>
+        </div>
+      </header>
+      <div id="statsBody"></div>
+    </div>
+  </div>
+
   <!-- Variant puzzle list: shown after tapping a variant card above. -->
   <div class="menu-screen" id="variantMenu" hidden>
     <div class="menu-scroll">
@@ -81,6 +155,9 @@
           <p class="menu-tagline" id="variantMenuBlurb"></p>
         </div>
       </header>
+      <div class="menu-search-row">
+        <input type="search" id="menuSearch" class="menu-search" placeholder="Search by puzzle or setter" autocomplete="off" aria-label="Search puzzles by title or setter">
+      </div>
       <div class="menu-sort-row" id="menuSortRow">
         <button class="chip active" data-sort="default">Newest</button>
         <button class="chip" data-sort="easiest">Easiest</button>
@@ -162,6 +239,12 @@
         </button>
         <button class="icon-tool" id="undoBtn" title="Undo" aria-label="Undo">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>
+        </button>
+        <button class="icon-tool" id="redoBtn" title="Redo" aria-label="Redo">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>
+        </button>
+        <button class="icon-tool" id="restartBtn" title="Restart puzzle" aria-label="Restart this puzzle">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
         </button>
         <button class="icon-tool" id="eraseBtn" title="Erase" aria-label="Erase cell">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L13 19"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
