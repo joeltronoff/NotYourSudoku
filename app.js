@@ -1195,11 +1195,23 @@
           if (state.cornerNotes[r][c].size > 0) {
             const notesGrid = document.createElement("div");
             notesGrid.className = "notes-grid";
-            for (let n = 1; n <= 9; n++) {
+            // Corner marks fill the eight edge positions and never the
+            // middle of the cell, so they can't be mistaken for centre
+            // marks. Order goes corners first, then the edge midpoints;
+            // a ninth mark doubles up in the bottom-centre slot.
+            const marks = [...state.cornerNotes[r][c]].sort((a, b) => a - b);
+            const slots = ["tl", "tr", "bl", "br", "tc", "ml", "mr", "bc"];
+            const text = slots.map(() => "");
+            marks.forEach((digit, i) => {
+              const slot = Math.min(i, slots.length - 1);
+              text[slot] += digit;
+            });
+            slots.forEach((slot, i) => {
               const span = document.createElement("span");
-              span.textContent = state.cornerNotes[r][c].has(n) ? n : "";
+              span.className = `corner-${slot}`;
+              span.textContent = text[i];
               notesGrid.appendChild(span);
-            }
+            });
             box.appendChild(notesGrid);
           }
           if (state.centerNotes[r][c].size > 0) {

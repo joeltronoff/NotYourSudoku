@@ -516,6 +516,16 @@ button {
   color: var(--ink-soft);
   font-family: var(--sans);
 }
+/* Corner marks live on the edges only — the middle of the cell belongs to
+   centre marks and to the final digit. */
+.corner-tl { grid-area: 1 / 1; }
+.corner-tc { grid-area: 1 / 2; }
+.corner-tr { grid-area: 1 / 3; }
+.corner-ml { grid-area: 2 / 1; }
+.corner-mr { grid-area: 2 / 3; }
+.corner-bl { grid-area: 3 / 1; }
+.corner-bc { grid-area: 3 / 2; }
+.corner-br { grid-area: 3 / 3; }
 
 .center-notes {
   position: absolute;
