@@ -1,4 +1,4 @@
-const CACHE_NAME = "solvers-notebook-v10";
+const CACHE_NAME = "solvers-notebook-v11";
 const ASSETS = [
   "./",
   "./index.html",
@@ -57,6 +57,9 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         return response;
       })
-      .catch(() => caches.match(event.request))
+      // Offline. The page asks for assets with a ?v= build stamp, which no
+      // pre-cached entry will match exactly, so ignore the query when
+      // falling back -- the bytes are the same file either way.
+      .catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });

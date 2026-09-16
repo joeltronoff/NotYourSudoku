@@ -1,3 +1,10 @@
+// Declared before anything else, and outside the closure, so the page can
+// still tell which build of this file it got even if the code below throws
+// on start-up. index.html compares it with its own build and refreshes the
+// device when the two disagree. tools/stamp-build.js treats this line as
+// the single source of the version number.
+window.APP_BUILD = "2026-09-16.4";
+
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
   const { generatePuzzle, computeCandidates, getHint, isBoardComplete, findConflicts, findVariantConflicts, cloneGrid } = window.SudokuEngine;
@@ -2648,43 +2655,6 @@
     });
   }
 
-  // The build this file belongs to. tools/stamp-build.js copies it into
-  // version.json, so the two can never drift -- change it here only.
-  const BUILD = "2026-09-16.3";
-
-  // An installed copy can end up running old files: an earlier service
-  // worker that serves from its cache first will happily keep doing that,
-  // and nothing in the app would notice. version.json is small and fetched
-  // with no-store, so it always reflects what the server actually has. If
-  // it disagrees with the build baked in here, this copy is stale, and the
-  // only reliable fix is to drop the caches and the workers and start over.
-  // The session flag stops that from becoming a reload loop when something
-  // else is wrong.
-  async function checkForStaleCopy() {
-    let latest;
-    try {
-      const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
-      if (!res.ok) return;
-      latest = (await res.json()).build;
-    } catch (err) {
-      return;   // offline, or the server is down: keep running what we have
-    }
-    if (!latest || latest === BUILD) return;
-    if (sessionStorage.getItem("refreshed-for-build") === latest) return;
-    sessionStorage.setItem("refreshed-for-build", latest);
-    try {
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((key) => caches.delete(key)));
-      }
-      if (navigator.serviceWorker) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map((reg) => reg.unregister()));
-      }
-    } catch (err) { /* reload regardless: the cache may already be gone */ }
-    location.reload();
-  }
-  window.addEventListener("load", checkForStaleCopy);
 
   // ---------------- Boot ----------------
   // The menu is always the first thing shown; a saved in-progress game (if

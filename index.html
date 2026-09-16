@@ -11,7 +11,13 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=2026-09-16.4" />
+<script>
+// The build these files belong to. tools/stamp-build.js keeps this, the
+// ?v= on every asset below, and version.json all in step with app.js --
+// change it there, not here.
+window.PAGE_BUILD = "2026-09-16.4";
+</script>
 <script>
 // A script error during start-up used to leave a blank screen with nothing
 // to go on, which is indistinguishable from "the app is broken" and gave a
@@ -36,6 +42,58 @@ window.addEventListener("error", (event) => {
     "border-radius:10px;background:#C4622D;color:#fff;font-weight:600;" +
     "text-align:center;text-decoration:none'>Clear the offline copy and reload</a>";
   document.body.appendChild(box);
+});
+
+// Recovering from stale files has to live here rather than in app.js: a
+// stale app.js can throw long before it reaches its own recovery code,
+// which is exactly what happened when a deleted button left the old
+// script looking for an element the new page no longer has.
+//
+// Dropping everything and reloading is heavy-handed, so it is guarded by
+// a session flag and can only happen once per build.
+async function selfHeal(reason, build) {
+  if (sessionStorage.getItem("refreshed-for-build") === build) return;
+  sessionStorage.setItem("refreshed-for-build", build);
+  console.warn("Refreshing: " + reason);
+  try {
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+    if (navigator.serviceWorker) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((reg) => reg.unregister()));
+    }
+  } catch (err) { /* reload regardless: the cache may already be gone */ }
+  location.reload();
+}
+
+// app.js states its own build on its first line, before anything that
+// could fail. If it disagrees with this page, the two came from different
+// releases -- which a shared host will do quite happily, since it may
+// still be serving one of them from a cache that has not expired yet.
+document.addEventListener("DOMContentLoaded", () => {
+  const app = window.APP_BUILD;
+  if (app && app !== window.PAGE_BUILD) {
+    selfHeal("page is " + window.PAGE_BUILD + " but app.js is " + app, window.PAGE_BUILD);
+  }
+});
+
+// And if the whole set is old together, the versions all agree and only
+// the server can say so. version.json is tiny, fetched with no-store and
+// skipped by the service worker, so it always reflects what is published.
+window.addEventListener("load", async () => {
+  let latest;
+  try {
+    const res = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) return;
+    latest = (await res.json()).build;
+  } catch (err) {
+    return;   // offline, or the server is down: keep running what we have
+  }
+  if (latest && latest !== window.PAGE_BUILD) {
+    selfHeal("server has " + latest + ", this copy is " + window.PAGE_BUILD, latest);
+  }
 });
 </script>
 </head>
@@ -387,10 +445,14 @@ window.addEventListener("error", (event) => {
 
 </div>
 
-<script src="sudoku-engine.js"></script>
-<script src="variant-solver.js"></script>
-<script src="puzzles.js"></script>
-<script src="puzzles-ctc.js"></script>
-<script src="app.js"></script>
+<!-- The ?v= is what stops this page loading last release's scripts. A host
+     may serve an asset from a cache that has not expired while already
+     serving the newer page, and the mismatch breaks the app; a URL that
+     changes with the build cannot be answered from the old entry. -->
+<script src="sudoku-engine.js?v=2026-09-16.4"></script>
+<script src="variant-solver.js?v=2026-09-16.4"></script>
+<script src="puzzles.js?v=2026-09-16.4"></script>
+<script src="puzzles-ctc.js?v=2026-09-16.4"></script>
+<script src="app.js?v=2026-09-16.4"></script>
 </body>
 </html>
