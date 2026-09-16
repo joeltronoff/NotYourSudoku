@@ -557,7 +557,17 @@ button {
   max-width: 420px;
   margin: 0 auto;
 }
-.pad-tools,
+/* The tools stood in two columns either side of the keypad, which left the
+   keypad half the width of the block. In one row above it they cost a
+   single button's height and hand the rest of that width to the digits. */
+.pad-toolbar {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 6px;
+}
 .pad-modes {
   display: flex;
   flex-direction: column;
@@ -569,7 +579,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 3 1 0;
+  flex: 5 1 0;
   min-width: 0;
 }
 .pad-numbers {
@@ -582,8 +592,17 @@ button {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
+/* These sit in the keypad's own columns, so left square they would be as
+   tall as a number key for no reason. The mode rail is squat for the same
+   reason: its height is what the whole block is measured against. */
+.pad-extra > .icon-tool,
+.pad-extra > .mode-btn { aspect-ratio: 3 / 1; }
+.pad-modes .mode-btn { aspect-ratio: 4 / 3; }
+/* Wider than tall on purpose. Square keys grow in both directions, and at
+   this width three rows of them pushed the bottom of the keypad off the
+   screen -- you had to scroll away from the grid to reach 7, 8 and 9. */
 .num-btn {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 3 / 2;
   border-radius: 8px;
   border: none;
   background: var(--panel-bg);
@@ -1227,7 +1246,11 @@ button {
 
   .panel {
     flex: 1;
-    max-width: 320px;
+    /* Only bites on screens wider than a folding phone, where the column
+       share alone would leave the panel much wider than it needs; unfolded
+       it is the 1 : 1.6 split against the board that decides, and the
+       board should keep the larger half. */
+    max-width: 400px;
     justify-content: center;
     gap: 20px;
     overflow-y: auto;
