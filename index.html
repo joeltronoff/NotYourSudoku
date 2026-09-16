@@ -11,12 +11,12 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="styles.css?v=2026-09-16.4" />
+<link rel="stylesheet" href="styles.css?v=2026-09-16.5" />
 <script>
 // The build these files belong to. tools/stamp-build.js keeps this, the
 // ?v= on every asset below, and version.json all in step with app.js --
 // change it there, not here.
-window.PAGE_BUILD = "2026-09-16.4";
+window.PAGE_BUILD = "2026-09-16.5";
 </script>
 <script>
 // A script error during start-up used to leave a blank screen with nothing
@@ -379,7 +379,7 @@ window.addEventListener("load", async () => {
         <div class="pad-center">
           <div class="pad-numbers" id="mobileNumpad"></div>
           <div class="pad-extra">
-            <button class="icon-tool" id="lockBtn" title="Digit first" aria-label="Hold a digit and tap cells to write it" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg></button>
+            <button class="icon-tool" id="lockBtn" title="Lock the selection" aria-label="Lock the selection so tapped cells stay highlighted" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></svg></button>
             <button class="mode-btn" data-mode="pen" title="Pen" aria-label="Draw pen marks on the grid">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M16.5 3.6a2.1 2.1 0 0 1 3 3L8 18.1l-4 1 1-4Z"/>
@@ -449,10 +449,10 @@ window.addEventListener("load", async () => {
      may serve an asset from a cache that has not expired while already
      serving the newer page, and the mismatch breaks the app; a URL that
      changes with the build cannot be answered from the old entry. -->
-<script src="sudoku-engine.js?v=2026-09-16.4"></script>
-<script src="variant-solver.js?v=2026-09-16.4"></script>
-<script src="puzzles.js?v=2026-09-16.4"></script>
-<script src="puzzles-ctc.js?v=2026-09-16.4"></script>
-<script src="app.js?v=2026-09-16.4"></script>
+<script src="sudoku-engine.js?v=2026-09-16.5"></script>
+<script src="variant-solver.js?v=2026-09-16.5"></script>
+<script src="puzzles.js?v=2026-09-16.5"></script>
+<script src="puzzles-ctc.js?v=2026-09-16.5"></script>
+<script src="app.js?v=2026-09-16.5"></script>
 </body>
 </html>

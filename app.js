@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-16.4";
+window.APP_BUILD = "2026-09-16.5";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -22,6 +22,7 @@ window.APP_BUILD = "2026-09-16.4";
     highlightDigit: true,
     digitCounts: false,
     digitFirst: false,
+    keepSelection: false,
     autoClearNotes: true,
     cageCalculator: true,
     showSeen: true,
@@ -1755,13 +1756,39 @@ window.APP_BUILD = "2026-09-16.4";
   }
 
   function selectCell(r, c) {
-    state.selected = [[r, c]];
     hintOutput.classList.remove("show");
     syncCageCalculator(r, c);
+
     if (settings.digitFirst && lockedDigit) {
+      state.selected = [[r, c]];
       applyLockedDigit(r, c);
       return;   // inputNumber already re-rendered
     }
+
+    // With the selection locked, taps gather cells from anywhere on the
+    // grid instead of replacing what was chosen, so a set that shares
+    // nothing -- not a row, not a box -- can still be marked in one go.
+    // Tapping a cell that is already in the set takes it back out, which
+    // is the only way to undo a mis-tap without starting the set again.
+    if (settings.keepSelection) {
+      const at = state.selected.findIndex(([sr, sc]) => sr === r && sc === c);
+      if (at === -1) state.selected.push([r, c]);
+      else state.selected.splice(at, 1);
+      render();
+      return;
+    }
+
+    state.selected = [[r, c]];
+    render();
+  }
+
+  // Arrow keys move the selection rather than build one. Gathering cells is
+  // something you do by tapping, and with the selection locked a held arrow
+  // key would otherwise drag a trail of cells across the grid.
+  function moveSelection(r, c) {
+    state.selected = [[r, c]];
+    hintOutput.classList.remove("show");
+    syncCageCalculator(r, c);
     render();
   }
 
@@ -2351,22 +2378,22 @@ window.APP_BUILD = "2026-09-16.4";
   document.getElementById("statsBtn").addEventListener("click", showStats);
   document.getElementById("redoBtn").addEventListener("click", redo);
 
-  // Digit-first is a tool, not just a preference: the button holds the
-  // mode on, and the choice is remembered like the other settings.
+  // The selection lock is a tool, not just a preference: the button holds
+  // the mode on, and the choice is remembered like the other settings.
+  // Digit-first stays a preference on the settings screen, and still wins
+  // while a digit is held -- a tap writes rather than gathers.
   const lockBtn = document.getElementById("lockBtn");
   function renderLockTool() {
-    lockBtn.setAttribute("aria-pressed", settings.digitFirst ? "true" : "false");
-    lockBtn.title = settings.digitFirst
-      ? "Digit first: on — tap a digit, then tap cells"
-      : "Digit first: tap a digit, then tap cells";
+    lockBtn.setAttribute("aria-pressed", settings.keepSelection ? "true" : "false");
+    lockBtn.title = settings.keepSelection
+      ? "Selection locked: tap cells to add them, tap again to remove"
+      : "Lock the selection: keep tapped cells highlighted";
   }
   lockBtn.addEventListener("click", () => {
-    settings.digitFirst = !settings.digitFirst;
-    if (!settings.digitFirst) lockedDigit = null;
+    settings.keepSelection = !settings.keepSelection;
     saveSettings();
     renderLockTool();
-    renderSettings();
-    renderNumpad();
+    render();
   });
   document.getElementById("restartBtn").addEventListener("click", () => {
     if (!state) return;
@@ -2557,10 +2584,10 @@ window.APP_BUILD = "2026-09-16.4";
       return;
     }
     else if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") eraseCell();
-    else if (e.key === "ArrowUp") selectCell(Math.max(0, r - 1), c);
-    else if (e.key === "ArrowDown") selectCell(Math.min(8, r + 1), c);
-    else if (e.key === "ArrowLeft") selectCell(r, Math.max(0, c - 1));
-    else if (e.key === "ArrowRight") selectCell(r, Math.min(8, c + 1));
+    else if (e.key === "ArrowUp") moveSelection(Math.max(0, r - 1), c);
+    else if (e.key === "ArrowDown") moveSelection(Math.min(8, r + 1), c);
+    else if (e.key === "ArrowLeft") moveSelection(r, Math.max(0, c - 1));
+    else if (e.key === "ArrowRight") moveSelection(r, Math.min(8, c + 1));
   });
 
   // Drag-select: press on a cell to start, drag across others to add them to
