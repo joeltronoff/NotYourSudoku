@@ -2347,16 +2347,7 @@
   // Digit-first is a tool, not just a preference: the button holds the
   // mode on, and the choice is remembered like the other settings.
   const lockBtn = document.getElementById("lockBtn");
-  const seenBtn = document.getElementById("seenBtn");
-  seenBtn.addEventListener("click", () => {
-    settings.showSeen = !settings.showSeen;
-    saveSettings();
-    renderLockTool();
-    renderSettings();
-    render();
-  });
   function renderLockTool() {
-    seenBtn.setAttribute("aria-pressed", settings.showSeen ? "true" : "false");
     lockBtn.setAttribute("aria-pressed", settings.digitFirst ? "true" : "false");
     lockBtn.title = settings.digitFirst
       ? "Digit first: on — tap a digit, then tap cells"
@@ -2659,7 +2650,7 @@
 
   // The build this file belongs to. tools/stamp-build.js copies it into
   // version.json, so the two can never drift -- change it here only.
-  const BUILD = "2026-09-16.2";
+  const BUILD = "2026-09-16.3";
 
   // An installed copy can end up running old files: an earlier service
   // worker that serves from its cache first will happily keep doing that,
