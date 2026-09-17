@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-17.5";
+window.APP_BUILD = "2026-09-17.6";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -1923,8 +1923,6 @@ window.APP_BUILD = "2026-09-17.5";
     const editable = state.selected.filter(([r, c]) => state.givens[r][c] === 0);
     if (editable.length === 0) return;
 
-    pushHistory();
-
     // A digit placed across several cells at once can only ever be a
     // candidate -- it cannot be the answer in more than one of them -- so
     // the digit tool writes corner marks whenever the selection holds more
@@ -1934,18 +1932,30 @@ window.APP_BUILD = "2026-09-17.5";
     const mode = state.inputMode === "digit" && state.selected.length > 1
       ? "corner"
       : state.inputMode;
+    const writingNotes = mode === "corner" || mode === "center";
 
-    if (mode === "corner" || mode === "center") {
+    // A cell holding a digit has no room for a candidate and never draws
+    // one, so marking it writes something nobody can see -- and it comes
+    // back the moment the digit is erased. Dragging across filled cells
+    // and pressing a number looked like the app doing nothing at all.
+    const targets = writingNotes
+      ? editable.filter(([r, c]) => state.grid[r][c] === 0)
+      : editable;
+    if (targets.length === 0) return;
+
+    pushHistory();
+
+    if (writingNotes) {
       const notes = mode === "corner" ? state.cornerNotes : state.centerNotes;
       // Same smart-toggle as color: fill in whichever cells are missing the
-      // candidate, unless every editable cell already has it, then clear it.
-      const allHaveNote = editable.every(([r, c]) => notes[r][c].has(n));
-      editable.forEach(([r, c]) => {
+      // candidate, unless every one of them already has it, then clear it.
+      const allHaveNote = targets.every(([r, c]) => notes[r][c].has(n));
+      targets.forEach(([r, c]) => {
         if (allHaveNote) notes[r][c].delete(n);
         else notes[r][c].add(n);
       });
     } else {
-      editable.forEach(([r, c]) => {
+      targets.forEach(([r, c]) => {
         state.grid[r][c] = n;
         state.cornerNotes[r][c].clear();
         state.centerNotes[r][c].clear();
