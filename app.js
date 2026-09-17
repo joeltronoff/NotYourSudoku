@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-17.6";
+window.APP_BUILD = "2026-09-17.7";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -74,7 +74,28 @@ window.APP_BUILD = "2026-09-17.6";
     if (forceFullCheck) return strictConflicts();
     if (settings.errorCheck === "off") return new Set();
     if (settings.errorCheck === "classic") return new Set(findConflicts(state.grid));
+    if (settings.errorCheck === "solution") return againstSolution();
     return strictConflicts();
+  }
+
+  // Every other setting reports broken rules, which is not the same as being
+  // wrong: a digit can sit happily inside every cage, dot and line it touches
+  // and still be the wrong answer, only contradicted several deductions
+  // later. This one compares against the puzzle's own solution instead, so a
+  // wrong digit is flagged the moment it goes in. It gives away more than
+  // the others -- it tells you that you are wrong before the grid does --
+  // which is why it is a separate choice rather than part of "All rules".
+  function againstSolution() {
+    const wrong = strictConflicts();
+    if (!state.solution) return wrong;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const v = state.grid[r][c];
+        if (v === 0 || state.givens[r][c] !== 0) continue;
+        if (v !== state.solution[r][c]) wrong.add(`${r},${c}`);
+      }
+    }
+    return wrong;
   }
 
   function strictConflicts() {

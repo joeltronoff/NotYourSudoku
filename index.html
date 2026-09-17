@@ -11,12 +11,12 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="styles.css?v=2026-09-17.6" />
+<link rel="stylesheet" href="styles.css?v=2026-09-17.7" />
 <script>
 // The build these files belong to. tools/stamp-build.js keeps this, the
 // ?v= on every asset below, and version.json all in step with app.js --
 // change it there, not here.
-window.PAGE_BUILD = "2026-09-17.6";
+window.PAGE_BUILD = "2026-09-17.7";
 </script>
 <script>
 // A script error during start-up used to leave a blank screen with nothing
@@ -194,12 +194,13 @@ window.addEventListener("load", async () => {
         <div class="settings-row">
           <span class="settings-label">Highlight errors</span>
           <div class="segmented" id="setErrorCheck">
+            <button class="chip" data-value="solution">Wrong digits</button>
             <button class="chip" data-value="full">All rules</button>
             <button class="chip" data-value="classic">Classic only</button>
             <button class="chip" data-value="off">Off</button>
           </div>
         </div>
-        <p class="settings-note">"Classic only" flags repeated digits in a row, column or box but stays quiet about variant rules, so it can't spoil a deduction.</p>
+        <p class="settings-note">"All rules" and "Classic only" flag digits that break a rule — which a wrong digit needn't do, so one can sit unflagged until a later deduction contradicts it. "Wrong digits" compares against the solution and marks any digit that doesn't match, so a mistake shows the moment you make it. "Classic only" stays quiet about variant rules, so it can't spoil a deduction.</p>
       </section>
 
       <section class="settings-group">
@@ -447,10 +448,10 @@ window.addEventListener("load", async () => {
      may serve an asset from a cache that has not expired while already
      serving the newer page, and the mismatch breaks the app; a URL that
      changes with the build cannot be answered from the old entry. -->
-<script src="sudoku-engine.js?v=2026-09-17.6"></script>
-<script src="variant-solver.js?v=2026-09-17.6"></script>
-<script src="puzzles.js?v=2026-09-17.6"></script>
-<script src="puzzles-ctc.js?v=2026-09-17.6"></script>
-<script src="app.js?v=2026-09-17.6"></script>
+<script src="sudoku-engine.js?v=2026-09-17.7"></script>
+<script src="variant-solver.js?v=2026-09-17.7"></script>
+<script src="puzzles.js?v=2026-09-17.7"></script>
+<script src="puzzles-ctc.js?v=2026-09-17.7"></script>
+<script src="app.js?v=2026-09-17.7"></script>
 </body>
 </html>
