@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-17.12";
+window.APP_BUILD = "2026-09-17.13";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";

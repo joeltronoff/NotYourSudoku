@@ -105,7 +105,11 @@ const RULE_BLACKLIST = [
   /three times|triple|1:3|ratio of 3/, /wobbly/, /slow thermo|may repeat on (a|the) thermo|not necessarily (strictly )?increas/,
   /missing bulb|bulbs? (are|is) missing|thermo.*(no|without) bulb/, /entropy\b/,
   /parity line/, /lockout/, /zipper/, /clone/, /x-?sum/, /skyscraper/, /index/, /doubler/, /negator/, /chaos/, /irregular/,
-  /yin.?yang/, /\bloop\b/, /snake/, /sweeper/, /cipher|letter/, /product/, /10 lines|ten lines/, /equal sum/,
+  // "Equal sum lines" is the other name for region sum lines, which the app
+  // does support, so it must not be blacklisted: every puzzle caught by it
+  // was a region sum puzzle phrased that way ("box borders divide each blue
+  // line into segments of equal sum").
+  /yin.?yang/, /\bloop\b/, /snake/, /sweeper/, /cipher|letter/, /product/, /10 lines|ten lines/,
   /multiplied|multiplication/, /\bliar\b|\blie\b|lying/, /deconstruct/, /fill ?omino/,
   /windoku|hyper/, /anti-?kropki/, /max(imum)? cell|min(imum)? cell/,
   /\bgreater than\b|\bless than\b|inequality/, /numbered room/, /count(ing)? circle/, /magic square/,
@@ -217,7 +221,7 @@ const DEFAULT_KIND = {
   green: 'whispers', pink: 'renban', purple: 'renban', gray: 'palindrome',
   blue: 'regionsum', orange: 'dutch',
 };
-function inferColouredLines(infos, { rules, solution, mentions }) {
+function inferColouredLines(infos, { rules, solution, mentions, tagAllows = () => false }) {
   const endpointKey = cell => `${cell[0]},${cell[1]}`;
   const groups = new Map();
   for (const x of infos) {
@@ -231,7 +235,15 @@ function inferColouredLines(infos, { rules, solution, mentions }) {
     if (sentences.length && COLOR_WORDS[fam]) {
       const named = options.filter(k => sentences.some(s => COLOR_WORDS[fam].test(s) && KIND_KEYWORDS[k].test(s)));
       if (named.length > 0) options = named;
-      else if (sentences.some(s => COLOR_WORDS[fam].test(s) && /line/.test(s))) options = []; // colour named for some other rule
+      // The rules name this colour for a line rule none of the keyword
+      // patterns recognised. Usually that means a variant the app can't
+      // model, so the guesses are dropped -- but not the kinds the
+      // catalogue actually tagged the puzzle with, which are a statement
+      // about what it is rather than an inference from wording. Whichever
+      // survive still have to hold on the setter's solution.
+      else if (sentences.some(s => COLOR_WORDS[fam].test(s) && /line/.test(s))) {
+        options = options.filter(k => tagAllows(k));
+      }
     }
     // A closed loop repeats its first cell at the end. Whispers keep the
     // closing pair; a renban is just its set of cells; palindromes can't loop.
@@ -318,7 +330,15 @@ function convertScl(p, ctx) {
   const rules = String(meta.rules || '');
   const rulesLower = rules.toLowerCase();
   const solution = parseSolutionString(meta.solution);
-  const mentions = kind => (rules ? KIND_KEYWORDS[kind].test(rulesLower) : ctx.tagAllows(kind));
+  // The catalogue's own tags count as well as the rules text, not only when
+  // the text is missing. A setter writes "digits on a blue line have an
+  // equal sum in each box it passes through"; no keyword list matches every
+  // way of saying that, and a tag of "Region Sum Lines" says it plainly.
+  // This only widens the candidates -- which rule a line actually is still
+  // has to hold on the setter's own solution, and the puzzle still has to
+  // come out uniquely solvable to that same solution before it is imported.
+  const mentions = kind =>
+    (rules && KIND_KEYWORDS[kind].test(rulesLower)) || ctx.tagAllows(kind);
 
   // Grid shape and regions.
   if (!Array.isArray(p.cells) || p.cells.length !== 9 || !p.cells.every(row => Array.isArray(row) && row.length === 9)) {
@@ -522,7 +542,7 @@ function convertScl(p, ctx) {
 
   // Remaining lines: whispers / renban / palindrome, grouped by colour.
   const rest = cellLines.filter(x => !used.lines.has(x.i));
-  lines.push(...inferColouredLines(rest, { rules, solution, mentions }));
+  lines.push(...inferColouredLines(rest, { rules, solution, mentions, tagAllows: ctx.tagAllows }));
   rest.forEach(x => used.lines.add(x.i));
   const sentences = rules ? rulesSentences(rules) : [];
   if (lines.length > 0) entry.lines = lines;
@@ -784,8 +804,10 @@ function convertFpuzzles(p, ctx) {
   if (untagged.length) {
     const solutionGrid = Array.isArray(p.solution) && p.solution.length === 81
       ? Array.from({ length: 9 }, (_, r) => p.solution.slice(r * 9, r * 9 + 9).map(Number)) : null;
-    const mentions = kind => KIND_KEYWORDS[kind].test(rulesLower);
-    lines.push(...inferColouredLines(untagged, { rules, solution: solutionGrid, mentions }));
+    // As in convertScl: the catalogue's tags widen the candidates, and the
+    // setter's solution still decides which rule a line actually is.
+    const mentions = kind => KIND_KEYWORDS[kind].test(rulesLower) || ctx.tagAllows(kind);
+    lines.push(...inferColouredLines(untagged, { rules, solution: solutionGrid, mentions, tagAllows: ctx.tagAllows }));
   }
   if (lines.length) entry.lines = lines;
 
