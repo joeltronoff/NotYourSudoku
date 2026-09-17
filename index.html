@@ -11,12 +11,12 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <link rel="icon" href="icons/icon-192.png" />
-<link rel="stylesheet" href="styles.css?v=2026-09-17.7" />
+<link rel="stylesheet" href="styles.css?v=2026-09-17.12" />
 <script>
 // The build these files belong to. tools/stamp-build.js keeps this, the
 // ?v= on every asset below, and version.json all in step with app.js --
 // change it there, not here.
-window.PAGE_BUILD = "2026-09-17.7";
+window.PAGE_BUILD = "2026-09-17.12";
 </script>
 <script>
 // A script error during start-up used to leave a blank screen with nothing
@@ -259,7 +259,12 @@ window.addEventListener("load", async () => {
 
   <!-- Header: minimal, just status -->
   <header class="titlebar" hidden>
-    <span class="difficulty-tag" id="difficultyDisplay">Medium</span>
+    <div class="titlebar-main">
+      <span class="puzzle-name" id="difficultyDisplay">Medium</span>
+      <!-- One small mark per constraint family on the board, so the rules
+           you are playing under are visible without opening the panel. -->
+      <div class="puzzle-tags" id="puzzleTags" hidden></div>
+    </div>
     <span class="timer" id="timerDisplay">00:00</span>
   </header>
 
@@ -448,10 +453,10 @@ window.addEventListener("load", async () => {
      may serve an asset from a cache that has not expired while already
      serving the newer page, and the mismatch breaks the app; a URL that
      changes with the build cannot be answered from the old entry. -->
-<script src="sudoku-engine.js?v=2026-09-17.7"></script>
-<script src="variant-solver.js?v=2026-09-17.7"></script>
-<script src="puzzles.js?v=2026-09-17.7"></script>
-<script src="puzzles-ctc.js?v=2026-09-17.7"></script>
-<script src="app.js?v=2026-09-17.7"></script>
+<script src="sudoku-engine.js?v=2026-09-17.12"></script>
+<script src="variant-solver.js?v=2026-09-17.12"></script>
+<script src="puzzles.js?v=2026-09-17.12"></script>
+<script src="puzzles-ctc.js?v=2026-09-17.12"></script>
+<script src="app.js?v=2026-09-17.12"></script>
 </body>
 </html>

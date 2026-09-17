@@ -94,8 +94,14 @@ button {
 }
 
 .app {
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* A definite height, not a minimum. Everything inside sizes off it --
+     the board asks its wrapper how tall it may be, and that answer is only
+     a real number if the chain above it is definite; with min-height the
+     wrapper's height was indefinite and the board fell back to nothing.
+     It also keeps the game on one screen, which is the point: the parts
+     that can give way (the rules) scroll within themselves instead. */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -109,13 +115,34 @@ button {
   padding: 12px 16px 8px;
   gap: 10px;
 }
-.difficulty-tag {
-  font-size: 12px;
-  font-weight: 600;
+.titlebar-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;   /* so a long name can ellipsize rather than push the timer */
+}
+.puzzle-name {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The constraint marks reuse the menu's variant icons, shrunk down. They
+   are a reminder, not a control: muted, and never wider than the name. */
+.puzzle-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
   color: var(--ink-soft);
-  background: var(--panel-bg);
-  padding: 5px 11px;
-  border-radius: 20px;
+}
+.puzzle-tags svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 .timer {
   font-size: 28px;
@@ -174,7 +201,11 @@ button {
 
 .board {
   position: relative;
-  width: min(94vw, 68dvh, 640px);
+  /* 100cqh is the wrapper's own height: without it the board kept its
+     viewport-derived size while its slot shrank, and overflowed equally
+     above and below -- far enough on a phone to sit over the titlebar and
+     under the rules. */
+  width: min(94vw, 68dvh, 100cqh, 640px);
   aspect-ratio: 1 / 1;
   background: var(--paper);
   border: 4px solid var(--grid-line-strong);
@@ -698,9 +729,14 @@ button {
   padding: 10px 14px;
   background: var(--panel-bg);
   border-radius: 12px;
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--ink);
+  /* Stacked between the board and the keypad, a long ruleset would take
+     whatever it needed and leave the board the remainder. Cap it and let
+     it scroll, so the board keeps a usable share on a phone. */
+  max-height: 18dvh;
+  overflow-y: auto;
 }
 .rules-panel-title {
   font-weight: 700;
@@ -717,7 +753,7 @@ button {
   position: relative;
   padding-left: 14px;
 }
-.rules-panel li + li { margin-top: 3px; }
+.rules-panel li + li { margin-top: 5px; }
 .rules-panel-source {
   display: inline-block;
   margin-top: 6px;
@@ -729,7 +765,8 @@ button {
   content: "";
   position: absolute;
   left: 2px;
-  top: 8px;
+  /* Centred on a 14px/1.5 line -- retune with the font size. */
+  top: 9px;
   width: 4px;
   height: 4px;
   border-radius: 50%;
@@ -1255,13 +1292,6 @@ button {
     flex-direction: row;
     align-items: stretch;
   }
-  /* Landscape on a folding phone is short, and the column beside the board
-     used to grow past the bottom of the window, so reaching the keypad
-     meant scrolling mid-solve. Pin the app to the window and let the rules
-     be the only thing that scrolls: the board and the whole keypad then
-     stay in view at any height. */
-  .app { height: 100dvh; }
-
   .puzzle-col { flex: 1.6; }
   .board { width: min(100cqw, 100cqh, 760px); }
 
@@ -1273,6 +1303,9 @@ button {
     flex: 0 1 auto;
     min-height: 0;
     overflow-y: auto;
+    /* Beside the board there is real height to use, so the portrait cap
+       would only make the panel needlessly short. Flex decides here. */
+    max-height: none;
   }
     /* Only bites on screens wider than a folding phone, where the column
        share alone would leave the panel much wider than it needs; unfolded
@@ -1294,7 +1327,8 @@ button {
 /* Very narrow cover-screen fallback */
 @media (max-width: 380px) {
   .timer { font-size: 15px; }
-  .difficulty-tag { font-size: 11px; }
+  .puzzle-name { font-size: 16px; }
+  .puzzle-tags svg { width: 13px; height: 13px; }
   .num-btn { font-size: 15px; }
 }
 

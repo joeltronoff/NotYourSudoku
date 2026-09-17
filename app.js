@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-17.7";
+window.APP_BUILD = "2026-09-17.12";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -460,6 +460,7 @@ window.APP_BUILD = "2026-09-17.7";
   const numpadEl = document.getElementById("mobileNumpad");
   const timerDisplay = document.getElementById("timerDisplay");
   const difficultyDisplay = document.getElementById("difficultyDisplay");
+  const puzzleTagsEl = document.getElementById("puzzleTags");
   const hintOutput = document.getElementById("hintOutput");
   const winOverlay = document.getElementById("winOverlay");
   const hintBtn = document.getElementById("hintBtn");
@@ -919,6 +920,7 @@ window.APP_BUILD = "2026-09-17.7";
       won: false,
     };
     difficultyDisplay.textContent = difficulty[0].toUpperCase() + difficulty.slice(1);
+    renderPuzzleTags();
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
     resetHint();
@@ -980,6 +982,7 @@ window.APP_BUILD = "2026-09-17.7";
     if (saved) state = stateFromData(saved);
 
     difficultyDisplay.textContent = entry.title;
+    renderPuzzleTags();
     hintOutput.classList.remove("show");
     winOverlay.classList.remove("show");
     resetHint();
@@ -1129,6 +1132,7 @@ window.APP_BUILD = "2026-09-17.7";
       if (!raw) return false;
       state = stateFromData(JSON.parse(raw));
       difficultyDisplay.textContent = state.title || (state.difficulty[0].toUpperCase() + state.difficulty.slice(1));
+      renderPuzzleTags();
       timerDisplay.textContent = formatTime(state.seconds);
       setInputMode("digit");
       if (!state.won) startTimer();
@@ -2227,6 +2231,43 @@ window.APP_BUILD = "2026-09-17.7";
   }
 
   const rulesPanelEl = document.getElementById("rulesPanel");
+  // Which constraint families are actually on this board. Worked out from
+  // the board itself rather than the entry's tags, so it stays right for a
+  // generated puzzle, which has no entry at all. Arrows sit under "lines",
+  // matching how the menu groups them.
+  function activeVariantKeys() {
+    if (!state) return [];
+    const has = v => (Array.isArray(v) ? v.length > 0 : !!v);
+    const pairs = [
+      ["killer", state.cages],
+      ["kropki", state.kropki],
+      ["lines", has(state.lines) || has(state.arrows)],
+      ["xv", state.xv],
+      ["quadruple", state.quadruples],
+      ["oddeven", state.oddEven],
+      ["extraregions", state.extraRegions],
+      ["sandwich", state.sandwich],
+      ["diagonal", state.diagonals],
+      ["antiknight", state.antiKnight],
+      ["antiking", state.antiKing],
+      ["nonconsecutive", state.nonConsecutive],
+      ["disjoint", state.disjointGroups],
+      ["fog", state.fog],
+    ];
+    return pairs.filter(([, v]) => has(v)).map(([key]) => key);
+  }
+
+  function renderPuzzleTags() {
+    const keys = activeVariantKeys().filter(key => VARIANT_INFO[key]);
+    puzzleTagsEl.innerHTML = keys.map(key => {
+      const info = VARIANT_INFO[key];
+      return `<span class="puzzle-tag" title="${info.title}" aria-label="${info.title}">${info.icon}</span>`;
+    }).join("");
+    // A classic puzzle has nothing to say here, and an empty strip would
+    // just leave the name floating above a gap.
+    puzzleTagsEl.hidden = keys.length === 0;
+  }
+
   function renderRulesPanel() {
     const rules = computeActiveRules();
     // Imported puzzles link back to the video they were featured in.
