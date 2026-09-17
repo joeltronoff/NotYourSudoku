@@ -166,8 +166,10 @@ button {
      element's own (definite) inline size even when nested inside the
      fit-content .sandwich-wrap — a plain "%" there would create a
      circular dependency (fit-content parent sized by a percentage
-     child) and collapse the board to near-zero. */
-  container-type: inline-size;
+     child) and collapse the board to near-zero. Sized on both axes so a
+     short landscape window can bound the board by height as well: against
+     the viewport alone it ignored the titlebar and ran off the bottom. */
+  container-type: size;
 }
 
 .board {
@@ -418,7 +420,19 @@ button {
 .arrow-line { stroke: var(--ink-soft); stroke-width: 0.5; stroke-opacity: 0.88; }
 .arrow-head { fill: none; stroke: var(--ink-soft); stroke-width: 0.5; stroke-opacity: 0.88; stroke-linecap: round; stroke-linejoin: round; }
 .arrow-circle { fill: none; stroke: var(--ink-soft); stroke-width: 0.6; stroke-opacity: 0.88; }
-.diagonal-line { stroke: var(--accent-soft); stroke-width: 3.2; stroke-linecap: butt; }
+.diagonal-line { stroke: var(--accent-soft); stroke-width: 3.2; stroke-linecap: butt; stroke-opacity: 0.72; }
+
+/* The grid redrawn over the decorations (see renderDecorations). Widths
+   are in screen pixels, not board units, so they match the real borders
+   underneath at every board size instead of thickening as it grows. */
+.deco-grid line { vector-effect: non-scaling-stroke; }
+/* Deliberately the strong grid colour at low alpha rather than the plain
+   grid colour: over an empty cell it lands within a shade of the border
+   below it, so nothing changes, but against a line it is the opposite end
+   of the scale and reads as a notch. The plain colour was too close to
+   the decorations to show against them at all. */
+.deco-grid-cell { stroke: var(--grid-line-strong); stroke-opacity: 0.38; stroke-width: 1; }
+.deco-grid-box { stroke: var(--grid-line-strong); stroke-width: 3; }
 .oddeven-odd { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; }
 .oddeven-even { fill: var(--panel-bg); stroke: var(--grid-line-strong); stroke-width: 0.3; opacity: 0.75; rx: 0.8; }
 
@@ -1241,11 +1255,25 @@ button {
     flex-direction: row;
     align-items: stretch;
   }
+  /* Landscape on a folding phone is short, and the column beside the board
+     used to grow past the bottom of the window, so reaching the keypad
+     meant scrolling mid-solve. Pin the app to the window and let the rules
+     be the only thing that scrolls: the board and the whole keypad then
+     stay in view at any height. */
+  .app { height: 100dvh; }
+
   .puzzle-col { flex: 1.6; }
-  .board { width: min(100cqw, 92dvh, 760px); }
+  .board { width: min(100cqw, 100cqh, 760px); }
 
   .panel {
     flex: 1;
+    overflow: hidden;
+  }
+  .rules-panel {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
     /* Only bites on screens wider than a folding phone, where the column
        share alone would leave the panel much wider than it needs; unfolded
        it is the 1 : 1.6 split against the board that decides, and the
@@ -1253,7 +1281,6 @@ button {
     max-width: 400px;
     justify-content: center;
     gap: 20px;
-    overflow-y: auto;
   }
   .input-row { max-width: 320px; }
   .mobile-numpad {

@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-17.1";
+window.APP_BUILD = "2026-09-17.4";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -1625,6 +1625,32 @@ window.APP_BUILD = "2026-09-17.1";
         add("circle", { cx, cy, r: 3.3 }, "oddeven-odd");
       }
     });
+
+    // The grid again, on top of everything drawn above. Translucency alone
+    // could never bring it through a line: the cell borders are only a
+    // shade off the cell behind them, so a stroke of any strength swallows
+    // them, and thinning the line far enough to see them washed the line
+    // out first. Redrawing the grid over the decorations cuts them back
+    // into cells, which is what makes a line read as "these squares"
+    // rather than one painted bar.
+    //
+    // Outside the fog group on purpose -- the grid is never a clue, and
+    // being able to see it under the fog is the point.
+    const grid = document.createElementNS(SVG_NS, "g");
+    grid.setAttribute("class", "deco-grid");
+    for (let i = 1; i < 9; i++) {
+      const className = i % 3 === 0 ? "deco-grid-box" : "deco-grid-cell";
+      for (const [x1, y1, x2, y2] of [[i * 10, 0, i * 10, 90], [0, i * 10, 90, i * 10]]) {
+        const el = document.createElementNS(SVG_NS, "line");
+        el.setAttribute("x1", x1);
+        el.setAttribute("y1", y1);
+        el.setAttribute("x2", x2);
+        el.setAttribute("y2", y2);
+        el.setAttribute("class", className);
+        grid.appendChild(el);
+      }
+    }
+    svg.appendChild(grid);
 
     decoOverlayEl.appendChild(svg);
   }
