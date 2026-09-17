@@ -3,7 +3,7 @@
 // on start-up. index.html compares it with its own build and refreshes the
 // device when the two disagree. tools/stamp-build.js treats this line as
 // the single source of the version number.
-window.APP_BUILD = "2026-09-17.4";
+window.APP_BUILD = "2026-09-17.5";
 
 (() => {
   const STORAGE_KEY = "solvers-notebook-state-v3";
@@ -1925,8 +1925,18 @@ window.APP_BUILD = "2026-09-17.4";
 
     pushHistory();
 
-    if (state.inputMode === "corner" || state.inputMode === "center") {
-      const notes = state.inputMode === "corner" ? state.cornerNotes : state.centerNotes;
+    // A digit placed across several cells at once can only ever be a
+    // candidate -- it cannot be the answer in more than one of them -- so
+    // the digit tool writes corner marks whenever the selection holds more
+    // than one cell, and places a confirmed digit only on a single cell.
+    // Counted on the selection rather than the editable cells, so what you
+    // see highlighted is what decides it, givens included.
+    const mode = state.inputMode === "digit" && state.selected.length > 1
+      ? "corner"
+      : state.inputMode;
+
+    if (mode === "corner" || mode === "center") {
+      const notes = mode === "corner" ? state.cornerNotes : state.centerNotes;
       // Same smart-toggle as color: fill in whichever cells are missing the
       // candidate, unless every editable cell already has it, then clear it.
       const allHaveNote = editable.every(([r, c]) => notes[r][c].has(n));
