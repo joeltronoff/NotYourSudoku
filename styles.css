@@ -533,7 +533,17 @@ button {
   background: transparent;
 }
 .cell.peer::before { background: rgba(43, 42, 39, 0.06); }
-.cell.same-value::before { background: rgba(179, 95, 69, 0.3); }
+/* Cells holding the digit you tapped. This is the highlight you scan the
+   grid with, so it gets a ring as well as a wash: the wash alone was the
+   same hue and nearly the same weight as the selected cell, which made
+   the two hard to tell apart and neither of them quick to spot. The ring
+   is what carries it -- the selected cell stays the solid one, with no
+   ring, so "where I am" and "where else this digit is" read differently
+   at a glance. */
+.cell.same-value::before {
+  background: rgba(179, 95, 69, 0.34);
+  box-shadow: inset 0 0 0 2px var(--accent-dark);
+}
 .cell.selected::before { background: rgba(204, 120, 92, 0.38); }
 .cell.conflict::before { background: rgba(192, 57, 43, 0.24); }
 .cell.hint-target { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
