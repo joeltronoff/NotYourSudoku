@@ -99,9 +99,16 @@ button {
      a real number if the chain above it is definite; with min-height the
      wrapper's height was indefinite and the board fell back to nothing.
      It also keeps the game on one screen, which is the point: the parts
-     that can give way (the rules) scroll within themselves instead. */
+     that can give way (the rules) scroll within themselves instead.
+
+     Small viewport height, not dynamic: dvh grows and shrinks as a mobile
+     browser's address bar hides and reappears, and since everything here
+     is measured against this one number, the whole layout resized with it
+     and the keypad slid up and down the screen while you were using it.
+     svh is the height with the bar showing and never changes, so nothing
+     moves. In an installed copy there is no bar and the two are equal. */
   height: 100vh;
-  height: 100dvh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
@@ -205,7 +212,7 @@ button {
      viewport-derived size while its slot shrank, and overflowed equally
      above and below -- far enough on a phone to sit over the titlebar and
      under the rules. */
-  width: min(94vw, 68dvh, 100cqh, 640px);
+  width: min(94vw, 68svh, 100cqh, 640px);
   aspect-ratio: 1 / 1;
   background: var(--paper);
   border: 4px solid var(--grid-line-strong);
@@ -542,7 +549,15 @@ button {
   border-right-color: var(--fog-line);
   border-bottom-color: var(--fog-line);
 }
+/* Every interaction state is drawn on ::before, so blanking it under fog
+   took the selection with it and left you unable to see which cell you
+   were about to type into. The selection comes back: it says where you
+   are, not anything about the puzzle. The other three stay hidden,
+   because each would give away something still under the fog -- a
+   same-digit match or a conflict would both say what an uncovered cell
+   holds, and a seen-cell shade can betray a clue you haven't met yet. */
 .cell.fogged::before { background: transparent; }
+.cell.fogged.selected::before { background: rgba(204, 120, 92, 0.45); }
 
 .notes-grid {
   position: absolute;
@@ -735,7 +750,7 @@ button {
   /* Stacked between the board and the keypad, a long ruleset would take
      whatever it needed and leave the board the remainder. Cap it and let
      it scroll, so the board keeps a usable share on a phone. */
-  max-height: 18dvh;
+  max-height: 18svh;
   overflow-y: auto;
 }
 .rules-panel-title {
