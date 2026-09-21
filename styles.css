@@ -796,6 +796,13 @@ button {
   padding: 12px 14px;
   background: var(--panel-bg);
   border-radius: 12px;
+  /* Capped and scrollable, like the rules. Stacked above the keypad the
+     board is the only flexible thing in the column, so anything that
+     appears here comes straight out of it -- uncapped, the calculator
+     left 77px of board. */
+  min-height: 0;
+  max-height: 21svh;
+  overflow-y: auto;
 }
 .killer-calc-controls {
   display: flex;
@@ -931,6 +938,10 @@ button {
   line-height: 1.5;
   color: var(--ink);
   display: none;
+  /* As the calculator: capped, so a long hint cannot eat the board. */
+  min-height: 0;
+  max-height: 12svh;
+  overflow-y: auto;
 }
 .hint-output.show { display: block; }
 .hint-output .hint-technique {
@@ -1312,6 +1323,12 @@ button {
 
   .panel {
     flex: 1;
+    /* Only bites on screens wider than a folding phone, where the column
+       share alone would leave the panel much wider than it needs; unfolded
+       it is the 1 : 1.6 split against the board that decides, and the
+       board should keep the larger half. */
+    max-width: 400px;
+    gap: 20px;
     overflow: hidden;
   }
   .rules-panel {
@@ -1322,14 +1339,13 @@ button {
        would only make the panel needlessly short. Flex decides here. */
     max-height: none;
   }
-    /* Only bites on screens wider than a folding phone, where the column
-       share alone would leave the panel much wider than it needs; unfolded
-       it is the 1 : 1.6 split against the board that decides, and the
-       board should keep the larger half. */
-    max-width: 400px;
-    justify-content: center;
-    gap: 20px;
-  }
+  /* The controls sit at the foot of the column and stay there. Everything
+     above them changes height while you play -- the rules card, the
+     calculator that replaces it, the hint line, the selection sum -- and
+     with the column centred the keypad moved every time one of them did;
+     opening the calculator shifted it most. The gap goes above the tools,
+     so what grows eats the empty space instead of pushing the keypad. */
+  .pad-toolbar { margin-top: auto; }
   .input-row { max-width: 320px; }
   .mobile-numpad {
     max-width: 230px;
