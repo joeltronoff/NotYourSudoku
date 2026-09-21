@@ -17,6 +17,15 @@
   --fog-dark: #A79E88;
   --fog-line: #9C927C;
   --pen: #2F6F8F;
+  /* Interaction washes, defined per theme. They are painted over the cell,
+     so a dark ink wash that reads on cream paper does almost nothing on a
+     near-black one. The peer shade used to be a single flat 6% black for
+     both themes, which left the cells a selection sees all but invisible
+     in the dark theme. */
+  --hl-peer: rgba(43, 42, 39, 0.13);
+  --hl-selected: rgba(204, 120, 92, 0.50);
+  --hl-same: rgba(179, 95, 69, 0.34);
+  --hl-conflict: rgba(192, 57, 43, 0.28);
   --line-thin: 1px;
   --line-thick: 2.5px;
   --radius: 10px;
@@ -45,6 +54,11 @@
   --fog-dark: #3A362F;
   --fog-line: #6E695E;
   --pen: #7FC4E8;
+  /* Light washes here rather than dark ones -- see the note on :root. */
+  --hl-peer: rgba(232, 229, 221, 0.14);
+  --hl-selected: rgba(224, 146, 119, 0.52);
+  --hl-same: rgba(224, 146, 119, 0.30);
+  --hl-conflict: rgba(226, 100, 90, 0.38);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -66,6 +80,10 @@
     --fog-dark: #3A362F;
     --fog-line: #6E695E;
     --pen: #7FC4E8;
+    --hl-peer: rgba(232, 229, 221, 0.14);
+    --hl-selected: rgba(224, 146, 119, 0.52);
+    --hl-same: rgba(224, 146, 119, 0.30);
+    --hl-conflict: rgba(226, 100, 90, 0.38);
   }
 }
 
@@ -532,7 +550,7 @@ button {
   pointer-events: none;
   background: transparent;
 }
-.cell.peer::before { background: rgba(43, 42, 39, 0.06); }
+.cell.peer::before { background: var(--hl-peer); }
 /* Cells holding the digit you tapped. This is the highlight you scan the
    grid with, so it gets a ring as well as a wash: the wash alone was the
    same hue and nearly the same weight as the selected cell, which made
@@ -541,11 +559,16 @@ button {
    ring, so "where I am" and "where else this digit is" read differently
    at a glance. */
 .cell.same-value::before {
-  background: rgba(179, 95, 69, 0.34);
+  background: var(--hl-same);
   box-shadow: inset 0 0 0 2px var(--accent-dark);
 }
-.cell.selected::before { background: rgba(204, 120, 92, 0.38); }
-.cell.conflict::before { background: rgba(192, 57, 43, 0.24); }
+/* The selected cell: the strongest wash, and a ring in the ink colour so
+   it still announces itself on a cell that is already shaded or fogged. */
+.cell.selected::before {
+  background: var(--hl-selected);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+.cell.conflict::before { background: var(--hl-conflict); }
 .cell.hint-target { outline: 2px solid var(--accent-dark); outline-offset: -2px; }
 
 /* Fog of War: a flat, opaque cover over anything not yet revealed. It
@@ -567,7 +590,10 @@ button {
    same-digit match or a conflict would both say what an uncovered cell
    holds, and a seen-cell shade can betray a clue you haven't met yet. */
 .cell.fogged::before { background: transparent; }
-.cell.fogged.selected::before { background: rgba(204, 120, 92, 0.45); }
+.cell.fogged.selected::before {
+  background: var(--hl-selected);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
 
 .notes-grid {
   position: absolute;
